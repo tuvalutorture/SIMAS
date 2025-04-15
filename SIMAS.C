@@ -122,22 +122,17 @@ void freeInstruction(instruction *inst) {
     }
     free(inst);
 }
-void cleanUp(instruction **instructionSet, variable *variables, label *labelSet, int numInstructions, int numVariables, int numLabels); // forward decl...
 
 void freeVariable(variable var) { free(var.name); free(var.value); }
 void freeLabel(label l) { free(l.name); }
 void freeList(list lis) { free(lis.name); for (int i = 0; i < lis.elements; i++) { freeVariable(lis.variables[i]); }}
 void freeFile(openFile file) {
-    free(file.path);
-    cleanUp(file.instructions, file.variables, file.labels, file.instructionCount, file.variableCount, file.labelCount);
-}
+    for (int i = 0; i < file.variables; i++) { freeInstruction(file.instructions[i]); }
+    for (int i = 0; i < file.variableCount; i++) { freeVariable(file.variables[i]); }
+    for (int i = 0; i < file.labelCount; i++) { freeLabel(file.labels[i]); }
+    for (int i = 0; i < file.listCount; i++) { freeList(file.lists[i]); }
 
-void cleanUp(instruction **instructionSet, variable *variables, label *labelSet, int numInstructions, int numVariables, int numLabels) { // hey, if it doesnt work, it'll exit out anyways amirite?
-    for (int i = 0; i < numInstructions; i++) { freeInstruction(instructionSet[i]); }
-    for (int i = 0; i < numVariables; i++) { freeVariable(variables[i]); }
-    for (int i = 0; i < numLabels; i++) { freeLabel(labelSet[i]); }
-
-    free(instructionSet); free(variables); free(labelSet);
+    free(file.instructions); free(file.variables); free(file.labels); free(file.lists); free(file.path);
 }
 
 char *stripSemicolon(char input[]) { char *string = strdup(input); int position = strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
@@ -675,7 +670,7 @@ void executeFile(openFile current) {
         else { cry("Invalid instruction!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n(i am sorry, but this codebase is held together with duct tape T_T)"); }
     }
 
-    cleanUp(current.instructions, current.variables, current.labels, current.instructionCount, current.variableCount, current.labelCount);
+    freeFile(current);
 }
 
 int main(int argc, const char * argv[]) {
