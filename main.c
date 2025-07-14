@@ -264,28 +264,7 @@ void writeFile(void) { // "write" function
     int offset = 0;
     j += 2;
     char path[150]; // big ass path just in case
-    char buffer[50] = {0};
-
-    char *buf;
-    char *ptr;
-    long size = pathconf(".", _PC_PATH_MAX);
-    
-    if ((buf = (char *)malloc((size_t)size)) != NULL)
-        ptr = getcwd(buf, (size_t)size);
-    
-    strcpy(path, ptr);
-    
-    for (int k = 0; k < sizeof(buffer) - 1; k++) {
-        if (input[j + k] == ' ' || input[j + k] == '\0') {
-            buffer[k] = '\0'; // null-terminate manually
-            j += offset + 1;
-            break;
-        }
-        buffer[k] = input[j + k];
-        offset++;
-    }
-
-    strcat(path, buffer);
+    fillStr(path, 149);
             
     FILE *file = fopen(path, "w");
     if (file == NULL) {
@@ -317,27 +296,14 @@ void writeFile(void) { // "write" function
         fprintf(file, "%c", input[j]);
         j++;
     }
-    free(buf);
     fclose(file);
 }
 
 void writeVariableFile(void) { // "writev" function
+    int offset = 0;
     j += 2;
     char path[150]; // big ass path just in case
-    char buffer[50] = {0};
-
-    char *buf;
-    char *ptr;
-    long size = pathconf(".", _PC_PATH_MAX);
-    
-    if ((buf = (char *)malloc((size_t)size)) != NULL)
-        ptr = getcwd(buf, (size_t)size);
-    
-    strcpy(path, ptr);
-    
-    fillStr(buffer, 49);
-
-    strcat(path, buffer);
+    fillStr(path, 149);
             
     FILE *file = fopen(path, "w");
     if (file == NULL) {
@@ -348,7 +314,6 @@ void writeVariableFile(void) { // "writev" function
     int location = seekToVar();
     // debug: printf("%s at %d\n", varName, location);
     fprintf(file, "%s", storedVariables[location + 2]);
-    free(buf);
     fclose(file);
 }
 
@@ -394,20 +359,7 @@ void conv(void) {
 void readFile(void) {
     j += 2;
     char path[150]; // big ass path just in case
-    char buffer[50] = {0};
-    
-    char *buf;
-    char *ptr;
-    long size = pathconf(".", _PC_PATH_MAX);
-    
-    if ((buf = (char *)malloc((size_t)size)) != NULL)
-        ptr = getcwd(buf, (size_t)size);
-    
-    strcpy(path, ptr);
-    
-    fillStr(buffer, 49);
-    
-    strcat(path, buffer);
+    fillStr(path, 149);
     
     FILE *file = fopen(path, "r");
     if (file == NULL) {
@@ -424,7 +376,6 @@ void readFile(void) {
             break;
         }
     }
-    free(buf);
     fclose(file);
 }
 
