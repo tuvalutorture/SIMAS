@@ -133,6 +133,38 @@ int seekToVar(void) {
     return location;
 }
 
+int seekToVarAndCreate(char type) { // oh look, the var doesnt exist. create it
+    int location;
+    int offset = 0;
+    char varName[101];
+    for (int k = 0; k < 100; k++) { // technically not the max, but 100 char variable names are a crime anyways
+        varName[k] = input[j + k];
+        if (input[j + k] == ' ') {
+            j += offset;
+            varName[k] = '\0';
+            break;
+        }
+        offset++;
+    }
+    location = findVar(varName);
+    if (location == -1) {
+        storedVariables[vars] = malloc(101); storedVariables[vars + 1] = malloc(3); storedVariables[vars + 2] = malloc(10000); // 100 chars for name, 3 for type (its one char but 3 js in case), and 10k for the value (to hold giant strings)
+        strcpy(storedVariables[vars], varName);
+        location = vars;
+        storedVariables[location + 1][0] = type;
+        if (type == 'b') {
+            strcpy(storedVariables[location + 2], "false");
+        } if (type == 'n') {
+            strcpy(storedVariables[location + 2], "0");
+        } if (type == 's') {
+            strcpy(storedVariables[location + 2], "\n");
+        }
+        vars += 3;
+    }
+    // printf("[fillStr] read: '%s' | j: %d\n", varName, j);
+    return location;
+}
+
 int seekToLabel(void) {
     int jumpLocation;
     int offset = 0;
@@ -161,7 +193,15 @@ void doMath(int operation) { // 1 for addition, 2 for subtraction, 3 for mult, 4
     fillStr(buf2, 100);
     int location1 = findVar(buf1);
     int location2 = findVar(buf2);
-    if (location1 == -1) {
+    if (location1 == -1 && !isdigit(buf1[0])) {
+        storedVariables[vars] = malloc(101); storedVariables[vars + 1] = malloc(3); storedVariables[vars + 2] = malloc(10000); // 100 chars for name, 3 for type (its one char but 3 js in case), and 10k for the value (to hold giant strings)
+        strcpy(storedVariables[vars], buf1);
+        location1 = vars;
+        storedVariables[location1 + 1][0] = 'n';
+        strcpy(storedVariables[location1 + 2], "0");
+        vars += 3;
+    }
+    else if (location1 == -1) {
         operand1 = atof(buf1);
     } else {
         if (storedVariables[location1 + 1][0] == 'n') {
@@ -171,7 +211,15 @@ void doMath(int operation) { // 1 for addition, 2 for subtraction, 3 for mult, 4
             exit(1);
         }
     }
-    if (location2 == -1) {
+    if (location2 == -1 && !isdigit(buf2[0])) {
+        storedVariables[vars] = malloc(101); storedVariables[vars + 1] = malloc(3); storedVariables[vars + 2] = malloc(10000); // 100 chars for name, 3 for type (its one char but 3 js in case), and 10k for the value (to hold giant strings)
+        strcpy(storedVariables[vars], buf2);
+        location2 = vars;
+        storedVariables[location2 + 1][0] = 'n';
+        strcpy(storedVariables[location2 + 2], "0");
+        vars += 3;
+    }
+    else if (location2 == -1) {
         operand2 = atof(buf2);
     } else {
         if (storedVariables[location2 + 1][0] == 'n') {
@@ -261,7 +309,6 @@ void print(void) { // printc but instead of user input it prints a var
 }
 
 void writeFile(void) { // "write" function
-    int offset = 0;
     j += 2;
     char path[150]; // big ass path just in case
     fillStr(path, 149);
@@ -300,7 +347,6 @@ void writeFile(void) { // "write" function
 }
 
 void writeVariableFile(void) { // "writev" function
-    int offset = 0;
     j += 2;
     char path[150]; // big ass path just in case
     fillStr(path, 149);
@@ -321,7 +367,7 @@ void copy(void) {
     j += 2;
     int location1 = seekToVar();
     j++;
-    int location2 = seekToVar();
+    int location2 = seekToVarAndCreate(storedVariables[location1 + 1][0]);
     strcpy(storedVariables[location2 + 2], storedVariables[location1 + 2]);
 }
 
@@ -368,7 +414,6 @@ void readFile(void) {
     }
     
     int location = seekToVar();
-    strcpy(storedVariables[location + 2], "\0");
     memset(storedVariables[location + 2], '\0', 10000);
     for (int k = 0; k < 10000; k++) {
         fscanf(file, "%c", &storedVariables[location + 2][k]);
@@ -410,7 +455,7 @@ void jumpv(void) {
 
 void negate(void) {
     j += 2;
-    int location = seekToVar();
+    int location = seekToVarAndCreate('b');
     if (storedVariables[location + 1][0] == 'b') {
         if (strstr(storedVariables[location + 2], "true")) {
             strcpy(storedVariables[location + 2], "false");
