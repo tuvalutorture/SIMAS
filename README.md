@@ -2,7 +2,8 @@
 *Created by: Turrnut*<br>
 **Brought to C by tuvalutorture.**<br>
 
-License: https://creativecommons.org/licenses/by-nc/4.0/ (Creative Commons Attribution Non-Commercial)
+License: https://creativecommons.org/licenses/by-nc/4.0/ (Creative Commons Attribution Non-Commercial)  
+This README is adapted from a significant chunk of the [original SIMAS repo, which is licensed under GPLv3](https://github.com/turrnut/simas).
 
 **SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a dynamically typed, compiled,
 high level, procedural programming language with a syntax that is inspired by the Assembly programming language.<br>
