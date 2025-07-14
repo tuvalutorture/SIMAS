@@ -9,7 +9,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
@@ -133,7 +132,7 @@ int seekToVar(void) {
     return location;
 }
 
-int seekToVarAndCreate(char type) { // oh look, the var doesnt exist. create it
+int seekToVarAndCreate(void) { // oh look, the var doesnt exist. create it
     int location;
     int offset = 0;
     char varName[101];
@@ -147,18 +146,11 @@ int seekToVarAndCreate(char type) { // oh look, the var doesnt exist. create it
         offset++;
     }
     location = findVar(varName);
+    
     if (location == -1) {
         storedVariables[vars] = malloc(101); storedVariables[vars + 1] = malloc(3); storedVariables[vars + 2] = malloc(10000); // 100 chars for name, 3 for type (its one char but 3 js in case), and 10k for the value (to hold giant strings)
         strcpy(storedVariables[vars], varName);
         location = vars;
-        storedVariables[location + 1][0] = type;
-        if (type == 'b') {
-            strcpy(storedVariables[location + 2], "false");
-        } if (type == 'n') {
-            strcpy(storedVariables[location + 2], "0");
-        } if (type == 's') {
-            strcpy(storedVariables[location + 2], "\n");
-        }
         vars += 3;
     }
     // printf("[fillStr] read: '%s' | j: %d\n", varName, j);
@@ -304,7 +296,6 @@ void print(void) { // printc but instead of user input it prints a var
         printf("The Macintosh(tm) Finder\nBruce Horn and Steve Capps\n128k        Version 5.3   Apple Computer (c) 1986\n");
     } else {
         printf("%s", storedVariables[location + 2]);
-
     }
 }
 
@@ -367,8 +358,9 @@ void copy(void) {
     j += 2;
     int location1 = seekToVar();
     j++;
-    int location2 = seekToVarAndCreate(storedVariables[location1 + 1][0]);
+    int location2 = seekToVarAndCreate();
     strcpy(storedVariables[location2 + 2], storedVariables[location1 + 2]);
+    strcpy(storedVariables[location2 + 1], storedVariables[location1 + 1]);
 }
 
 void conv(void) {
@@ -455,7 +447,10 @@ void jumpv(void) {
 
 void negate(void) {
     j += 2;
-    int location = seekToVarAndCreate('b');
+    int location = seekToVarAndCreate();
+    if (location + 1 == vars) {
+        storedVariables[location + 1][0] = 'b';
+    }
     if (storedVariables[location + 1][0] == 'b') {
         if (strstr(storedVariables[location + 2], "true")) {
             strcpy(storedVariables[location + 2], "false");
@@ -735,7 +730,9 @@ void compile(const char path[300]) {
             continue;
         }
         strcat(instructions[k], "\0");
-        if (strcmp(instructions[k], "PRINTC") == 0 || strcmp(instructions[k], "WRITE") == 0 || (k >= 2 && strcmp(instructions[k - 1], "STR") == 0 && strcmp(instructions[k - 2], "SET") == 0)) {
+        if (strcmp(instructions[k], "PRINTC") == 0 || strcmp(instructions[k], "WRITE") == 0 ||
+            (k >= 2 && strcmp(instructions[k - 1], "STR") == 0 && strcmp(instructions[k - 2], "SET") == 0) ||
+            (k >= 2 && strcmp(instructions[k - 1], "STR") == 0 && strcmp(instructions[k - 2], "EQC") == 0)) {
             k += 1;
             instructions[k] = malloc(10000);
             fseek(file, 1, SEEK_CUR);
@@ -966,8 +963,7 @@ int main(int argc, const char * argv[]) {
                 compare('N');
             }
         }
-        printf("\nThis message SHOULD NOT PRINT. If it IS, please remember to TERMINATE the program by calling instruction \"QUIT (q)\". \n\n");
-        return 1234567890;
+        return 0;
     } else if (strcmp(argv[1], "C") == 0) {
         compile(argv[2]);
     }
