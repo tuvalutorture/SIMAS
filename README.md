@@ -29,6 +29,7 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 
 > [!NOTE]
 > This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
+> Also, as of now, SIMAS/CMAS has *ONLY* been confirmed to work on Mac (no testing has been done on other platforms).
 
 > [!IMPORTANT]
 > When doing file i/o (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file, or else it will fail.
