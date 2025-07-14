@@ -37,7 +37,7 @@ void openStartingFiles(const char path[300]) {
     for (i = 0; i < BUFFER_SIZE; i++) {
         fscanf(file, "%c", &input[i]);
         if (input[i - 1] == 'l' && input[i - 2] == ' ' && input[i - 3] == ' ' && input[i] == ':') { // checks to make sure it's a lone label declaration and not part of a print statement
-            i -= 2;
+            i -= 3;
             for (int k = 0; k < 20; k++) {
                 fscanf(file, "%c", &labels[labelLoc][k]);
                 if (labels[labelLoc][k] == ' ') {
@@ -401,7 +401,7 @@ void readFile(void) {
     
     FILE *file = fopen(path, "r");
     if (file == NULL) {
-        printf("failed to read file! %s\n", path);
+        printf("failed to read file! %s at %d\n", path, j);
         exit(EIO);
     }
     
@@ -909,58 +909,87 @@ int main(int argc, const char * argv[]) {
         openStartingFiles(argv[2]);
         for (j = 0; j < i; j++) {
             char current_char = input[j];
-            if (current_char == '+') { // add
-                doMath(1);
-            } else if (current_char == '-') { // sub
-                doMath(2);
-            } else if (current_char == '*') { // mul
-                doMath(3);
-            } else if (current_char == '/') { // div
-                doMath(4);
-            } else if (current_char == 'p') { // printc. also acts as prints/println
-                printc();
-            } else if (current_char == 'P') { // print
-                print();
-            } else if (current_char == 'q') { // quit
-                exit(0);
-            } else if (current_char == 'w') { // write
-                writeFile();
-            } else if (current_char == 'W') { // writev
-                writeVariableFile();
-            } else if (current_char == 'c') { // copy
-                copy();
-            } else if (current_char == 'C') { // conv
-                conv();
-            } else if (current_char == 'r') { // read
-                readFile();
-            } else if (current_char == 'j') { // jump
-                jump();
-            } else if (current_char == 'J') { // jumpv
-                jumpv();
-            } else if (current_char == '!') { // not
-                negate();
-            } else if (current_char == '_') { // set
-                setVar();
-            } else if (current_char == '<') { // st
-                compare('<');
-            } else if (current_char == '[') { // ste
-                compare('[');
-            } else if (current_char == '>') { // gt
-                compare('>');
-            } else if (current_char == ']') { // gte
-                compare(']');
-            } else if (current_char == '&') { // and
-                compare('&');
-            } else if (current_char == '|') { // or
-                compare('|');
-            } else if (current_char == 'e') { // eqc
-                compare('e');
-            } else if (current_char == 'E') { // eqv
-                compare('E');
-            } else if (current_char == 'n') { // neqc
-                compare('n');
-            } else if (current_char == 'N') { // neqv
-                compare('N');
+            switch (current_char) {
+                case '+': // add
+                    doMath(1);
+                    break;
+                case '-': // sub
+                    doMath(2);
+                    break;
+                case '*': // mul
+                    doMath(3);
+                    break;
+                case '/': // div
+                    doMath(4);
+                    break;
+                case 'p': // printc, prints, println
+                    printc();
+                    break;
+                case 'P': // print
+                    print();
+                    break;
+                case 'q': // quit
+                    exit(0);
+                    break;
+                case 'w': // write
+                    writeFile();
+                    break;
+                case 'W': // writev
+                    writeVariableFile();
+                    break;
+                case 'c': // copy
+                    copy();
+                    break;
+                case 'C': // conv
+                    conv();
+                    break;
+                case 'r': // read
+                    readFile();
+                    break;
+                case 'j': // jump
+                    jump();
+                    break;
+                case 'J': // jumpv
+                    jumpv();
+                    break;
+                case '!': // not
+                    negate();
+                    break;
+                case '_': // set
+                    setVar();
+                    break;
+                case '<': // st
+                    compare('<');
+                    break;
+                case '[': // ste
+                    compare('[');
+                    break;
+                case '>': // gt
+                    compare('>');
+                    break;
+                case ']': // gte
+                    compare(']');
+                    break;
+                case '&': // and
+                    compare('&');
+                    break;
+                case '|': // or
+                    compare('|');
+                    break;
+                case 'e': // eqc
+                    compare('e');
+                    break;
+                case 'E': // eqv
+                    compare('E');
+                    break;
+                case 'n': // neqc
+                    compare('n');
+                    break;
+                case 'N': // neqv
+                    compare('N');
+                    break;
+                default:
+                    break;
             }
         }
         return 0;
