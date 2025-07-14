@@ -5,8 +5,8 @@
 License: [Creative Commons Attribution Non-Commercial](https://creativecommons.org/licenses/by-nc/4.0/) (applies to all CODE in this repository)
 This README is adapted from a significant chunk of the [original SIMAS repo, which is licensed under GPLv3, henceforth this readme is also under the GPL v3 license](https://github.com/turrnut/simas).
 
-**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a dynamically typed, compiled,
-high level, procedural programming language with a syntax that is inspired by the Assembly programming language.<br>
+**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, compiled,
+high level procedural programming language with a syntax that is inspired by the Assembly programming language.<br>
 In SIMAS, each line starts with an instruction,
 optionally followed by one or more operands, just like Assembly.<br>
 To run a SIMAS program, compile it first using `simas C <filename.simas>`, it should generate a `.csa` file,
@@ -24,6 +24,17 @@ For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<b
 
 All occurences of `\n` will be replaced with a new line, and `\\` with `\`.
 
+**Differences** <br>
+
+In this version of SIMAS, which can also be called CMAS (C/Compiled SIMAS),  
+there are a few key differences between CMAS and SIMASJS (the main fork).  
+
+Differences:
+* CMAS does not support Lists or Functions at this moment.
+* CMAS compiled code and SIMASJS compiled code are NOT interoperable.
+* CMAS runs atop a C based interpreter, while SIMASJS is JavaScript based.
+* For most things, CMAS requires you to create a var AHEAD of use (though math ops and COPY will automatically create one of the desired name if it doesn't exist)
+
 **Troubleshooting** <br>
 If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, try running `chmod +x ./simas`.
 
@@ -32,7 +43,7 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 > Also, as of now, SIMAS/CMAS has *ONLY* been confirmed to work on Mac (no testing has been done on other platforms).
 
 > [!IMPORTANT]
-> When doing file i/o (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file, or else it will fail.
+> When doing file I/O (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file, or else it will fail.
 
 ## DOCUMENTATION 
 ### DATA TYPES 
