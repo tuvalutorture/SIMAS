@@ -30,6 +30,9 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 > [!NOTE]
 > This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
 
+> [!IMPORTANT]
+> When doing file i/o (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file, or else it will fail.
+
 ## DOCUMENTATION 
 ### DATA TYPES 
 #### - bool : a boolean value.
