@@ -729,10 +729,24 @@ void compile(const char path[300]) {
             k--;
             continue;
         }
+        char buffer1[10000];
+        char buffer2[10000];
+        char buffer3[10000];
+        strcpy(buffer1, instructions[k]);
+        if (k >= 2) {
+            strcpy(buffer2, instructions[k - 1]);
+            strcpy(buffer3, instructions[k - 2]);
+        }
+        for (int l = 0; l < 9999; l++) {
+            buffer1[l] = tolower(buffer1[l]);
+            buffer2[l] = tolower(buffer2[l]);
+            buffer3[l] = tolower(buffer3[l]);
+        }
         strcat(instructions[k], "\0");
-        if (strcmp(instructions[k], "PRINTC") == 0 || strcmp(instructions[k], "WRITE") == 0 ||
-            (k >= 2 && strcmp(instructions[k - 1], "STR") == 0 && strcmp(instructions[k - 2], "SET") == 0) ||
-            (k >= 2 && strcmp(instructions[k - 1], "STR") == 0 && strcmp(instructions[k - 2], "EQC") == 0)) {
+        if (strcmp(buffer1, "printc") == 0 || strcmp(buffer1, "write") == 0 ||
+            (k >= 2 && strcmp(buffer2, "str") == 0 && strcmp(buffer3, "set") == 0) ||
+            (k >= 2 && strcmp(buffer2, "str") == 0 && strcmp(buffer3, "eqc") == 0) ||
+            (k >= 2 && strcmp(buffer2, "str") == 0 && strcmp(buffer3, "neqc") == 0)) {
             k += 1;
             instructions[k] = malloc(10000);
             fseek(file, 1, SEEK_CUR);
