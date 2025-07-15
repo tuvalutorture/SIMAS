@@ -83,27 +83,27 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 * OPERAND 3: the divisor, optionally being a variable name
 
 #### - eqc
-* equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * ATTENTION: please use this ONLY when OPERAND 2 is a variable name and OPERAND 3 is a constant
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
 * OPERAND 3: a constant
 
 #### - eqv
-* equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * ATTENTION: please use this ONLY whend dealing with two variables
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
 * OPERAND 3: name of second variable
 
 #### - gt
-* greater than comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* greater than comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the first value, optionally being a variable name
 * OPERAND 3: the second value, optionally being a variable name
 
 #### - gte
-* greater than or equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* greater than or equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the first value, optionally being a variable name
 * OPERAND 3: the second value, optionally being a variable name
@@ -129,14 +129,14 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 * OPERAND 3: the second factor, optionally being a variable name
 
 #### - neqc
-* not equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* not equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * ATTENTION: please use this ONLY when OPERAND 2 is a variable name and OPERAND 3 is a constant
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
 * OPERAND 3: a constant
 
 #### - neqv
-* not equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* not equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * ATTENTION: please use this ONLY whend dealing with two variables
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
@@ -181,13 +181,13 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 * OPERAND 3: the value you wish to assign
 
 #### - st
-* smaller than comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* smaller than comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the first value, optionally being a variable name
 * OPERAND 3: the second value, optionally being a variable name
 
 #### - ste
-* smaller than or equal to comparison operator. value will be assigned to the variable at OPERAND 1, if it is a variable name
+* smaller than or equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the first value, optionally being a variable name
 * OPERAND 3: the second value, optionally being a variable name
