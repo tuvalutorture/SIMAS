@@ -5,13 +5,10 @@
 License: [Creative Commons Attribution Non-Commercial](https://creativecommons.org/licenses/by-nc/4.0/) (applies to all CODE in this repository)
 This README is adapted from a significant chunk of the [original SIMAS repo, which is licensed under GPLv3, henceforth this readme is also under the GPL v3 license](https://github.com/turrnut/simas).
 
-**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, compiled,
-high level procedural programming language with a syntax that is inspired by the Assembly programming language.<br>
-In SIMAS, each line starts with an instruction,
-optionally followed by one or more operands, just like Assembly.<br>
-To run a SIMAS program, compile it first using `simas C <filename.simas>`, it should generate a `.csa` file,
-then run the `.csa` file with `simas E <filename>`. It is IMPORTANT that the filename ends in .simas,  
-or else the file name may be malformed.
+**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, high level procedural programming language  
+with a syntax that is inspired by the Assembly programming language.<br>
+In SIMAS, each line starts with an instruction, optionally followed by one or more operands, just like Assembly.<br>
+To run a SIMAS program, simply run ```./simas <filename>```.
 
 **Additional Notes** <br>
 
@@ -31,12 +28,9 @@ there are a few key differences between CMAS and SIMASJS (the main fork).
 
 Differences:
 * CMAS does not support Lists or Functions at this moment.
-* CMAS compiled code and SIMASJS compiled code are NOT interoperable.
+* CMAS does not require a compilation step.
 * CMAS runs atop a C based interpreter, while SIMASJS is JavaScript based.
 * For most things, CMAS requires you to create a var AHEAD of use (though math ops and COPY will automatically create one of the desired name if it doesn't exist)
-
-**Troubleshooting** <br>
-If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, try running `chmod +x ./simas`.
 
 > [!NOTE]
 > This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
@@ -55,14 +49,14 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 * all code after @ in the current line is ignored, until a semicolon is seen. this is a comment feature
 
 #### - add
-* add the value of OPERAND 2 and 3 (as of now can only handle `num`) the value will be assigned to OPERAND 2, if it is a variable name
+* add the value of OPERAND 2 and 3 (must be `num`) the value will be assigned to OPERAND 2, if it is a variable name
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the first addend, optionally being a variable name
 * OPERAND 3: the second addend, optionally being a variable name
 
 #### - and
 * performs logical operation AND on OPERAND 2 and 3; the value will be assigned to OPERAND 2, if it is a variable name
-* OPERAND 1: the data type of both OPERAND 2 and 3 (as of now can only handle `bool`) 
+* OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
 * OPERAND 2: the first boolean variable, optionally being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
@@ -148,7 +142,7 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 
 #### - or
 * performs logical operation OR on OPERAND 2 and 3; the value will be assigned to OPERAND 2, if it is a variable name
-* OPERAND 1: the data type of both OPERAND 2 and 3 (as of now can only handle `bool`) 
+* OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
 * OPERAND 2: the first boolean variable, optionally being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
@@ -178,7 +172,7 @@ If you're on a UNIX system (such as macOS or Linux) and can't run the `simasc`, 
 * assign a value to a variable.
 * OPERAND 1: the type of value. If the operand here is "in", then the value of the user input will be stored at this variable, with `str` type
 * OPERAND 2: the name of the variable
-* OPERAND 3: the value you wish to assign
+* OPERAND 3: the value you wish to assign, if not using "in" as OPERAND 1
 
 #### - st
 * smaller than comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
