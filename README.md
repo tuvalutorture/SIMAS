@@ -23,7 +23,7 @@ All occurences of `\n` will be replaced with a new line, and `\\` with `\`.
 
 **Differences** <br>
 
-In this version of SIMAS, which can also be called CMAS (C/Compiled SIMAS),  
+In this version of SIMAS, which can also be called CMAS (C SIMAS),  
 there are a few key differences between CMAS and SIMASJS (the main fork).  
 
 Differences:
