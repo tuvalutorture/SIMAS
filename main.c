@@ -177,7 +177,7 @@ void doMath(int operation) { // 1 for addition, 2 for subtraction, 3 for mult, 4
     if ((float)temp == output) { isFloatMath = 0; }
     if (location1 != -1) {
         if (isFloatMath) { sprintf(storedVariables[location1 + 2], "%f", output); }
-        else { printf(storedVariables[location1 + 2], "%d", (int)output); }
+        else { sprintf(storedVariables[location1 + 2], "%d", (int)output); }
     } else if (location2 != -1) {
         if (isFloatMath) { sprintf(storedVariables[location2 + 2], "%f", output); }
         else { sprintf(storedVariables[location2 + 2], "%d", (int)output); }
