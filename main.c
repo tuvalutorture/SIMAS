@@ -1,4 +1,4 @@
-/* CMAS (Compiled SIMAS "SIMple ASsembly") interpreter */
+/* CMAS (C SIMAS "SIMple ASsembly") interpreter        */
 /* written by tuvalutorture                            */
 /* a feral child powered purely by rhcp and soda       */
 /* please kill me                                      */
