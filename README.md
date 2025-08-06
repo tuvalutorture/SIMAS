@@ -163,11 +163,6 @@ Differences:
 #### - quit
 * quits the program
 
-#### - read
-* read from a file
-* OPERAND 1: path to the file
-* OPERAND 2: name of a variable to store the data of the file in
-
 #### - set
 * assign a value to a variable.
 * OPERAND 1: the type of value. If the operand here is "in", then the value of the user input will be stored at this variable, with `str` type
@@ -191,13 +186,3 @@ Differences:
 * OPERAND 1: the data type of both OPERAND 2 and 3
 * OPERAND 2: the subtrahend, optionally being a variable name
 * OPERAND 3: the minuend, optionally being a variable name
-
-#### - write
-* write to a file after erasing all of its contents
-* OPERAND 1: path of the file
-* OPERAND 2: text to write
-
-#### - writev
-* write to a file after erasing all of its contents. same as `write` but writing variables
-* OPREAND 1: path of the file
-* OPERAND 2: name of the variable whose contents will be written to the file.
