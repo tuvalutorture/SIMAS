@@ -2,13 +2,13 @@
 *Created by: Turrnut*<br>
 **Brought to C by tuvalutorture.**<br>
 
-License: [Creative Commons Attribution Non-Commercial](https://creativecommons.org/licenses/by-nc/4.0/) (applies to all CODE in this repository)
-This README is adapted from a significant chunk of the [original SIMAS repo, which is licensed under GPLv3, henceforth this readme is also under the GPL v3 license](https://github.com/turrnut/simas).
+License: GPLv3, which is the same as the [original SIMAS repo, which is also licensed under GPLv3](https://github.com/turrnut/simas).
 
 **SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, high level procedural programming language  
 with a syntax that is inspired by the Assembly programming language.<br>
 In SIMAS, each line starts with an instruction, optionally followed by one or more operands, just like Assembly.<br>
-To run a SIMAS program, simply run ```./simas <filename>```.
+To run a SIMAS program, simply run ```./simas <filename>```. <br>
+Additionally, you can use the ```--debug``` flag to get more info.
 
 **Additional Notes** <br>
 
@@ -19,7 +19,7 @@ in front of any instruction. However, SIMAS will ignore your politeness by ignor
 
 For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<br>
 
-All occurences of `\n` will be replaced with a new line, and `\\` with `\`.
+All occurences of `\n` within string constants (such as PRINTC) will be replaced with a new line.
 
 **Differences** <br>
 
@@ -30,14 +30,14 @@ Differences:
 * CMAS does not support Lists or Functions at this moment.
 * CMAS does not require a compilation step.
 * CMAS runs atop a C based interpreter, while SIMASJS is JavaScript based.
-* For most things, CMAS requires you to create a var AHEAD of use (though math ops and COPY will automatically create one of the desired name if it doesn't exist)
+* For most things, CMAS requires you to create a var AHEAD of use (though COPY will automatically create one of the desired name if it doesn't exist)
 
 > [!NOTE]
 > This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
-> Also, as of now, SIMAS/CMAS has *ONLY* been confirmed to work on Mac (no testing has been done on other platforms).
+> As of now, SIMAS/CMAS has *ONLY* been confirmed to work on Mac (Xcode) & Windows (CL). Your mileage on other platforms/compilers may vary.
 
 > [!IMPORTANT]
-> When doing file I/O (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file, or else it will fail.
+> When doing file I/O (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file (such as providing a ```.\```), or else it will fail.
 
 ## DOCUMENTATION 
 ### DATA TYPES 
@@ -77,14 +77,14 @@ Differences:
 * OPERAND 3: the divisor, optionally being a variable name
 
 #### - eqc
-* equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
+* equal to comparison operator. value will be assigned to the variable at OPERAND 2
 * ATTENTION: please use this ONLY when OPERAND 2 is a variable name and OPERAND 3 is a constant
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
 * OPERAND 3: a constant
 
 #### - eqv
-* equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
+* equal to comparison operator. value will be assigned to the variable at OPERAND 2
 * ATTENTION: please use this ONLY whend dealing with two variables
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
@@ -123,14 +123,14 @@ Differences:
 * OPERAND 3: the second factor, optionally being a variable name
 
 #### - neqc
-* not equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
+* not equal to comparison operator. value will be assigned to the variable at OPERAND 2.
 * ATTENTION: please use this ONLY when OPERAND 2 is a variable name and OPERAND 3 is a constant
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
 * OPERAND 3: a constant
 
 #### - neqv
-* not equal to comparison operator. value will be assigned to the variable at OPERAND 2, if it is a variable name
+* not equal to comparison operator. value will be assigned to the variable at OPERAND 2.
 * ATTENTION: please use this ONLY whend dealing with two variables
 * OPERAND 1: data type of OPERANDS 2 and 3
 * OPERAND 2: name of first variable
@@ -138,7 +138,7 @@ Differences:
 
 #### - not
 * negation logical operator
-* OPERAND 1: name of the variable to be negated
+* OPERAND 1: name of the variable to be negated (must be a bool)
 
 #### - or
 * performs logical operation OR on OPERAND 2 and 3; the value will be assigned to OPERAND 2, if it is a variable name

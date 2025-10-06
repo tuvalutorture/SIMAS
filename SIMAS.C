@@ -61,23 +61,23 @@
 
 int debugMode = 0;
 
-int vars = 0; int instructionCount = 0;
+int vars = 0; int instructionCount = 0; int labelCount = 0;
 
 typedef struct {
-    const char *name;
+    char *name;
     int type;
     char *value; // 10k should be enough for anyone - wait no, its dynamic now, nvm
     int valueLength;
 } variable;
 
 typedef struct {
-    const char *operation;
+    char *operation;
     int argumentCount;
     char *arguments[];
 } instruction;
 
 typedef struct {
-    const char *name;
+    char *name;
     int location;
 } label;
 
@@ -90,7 +90,19 @@ char *validInstructions[][15] = {
 
 variable *storedVariables; instruction **instructions; label *labels;
 
-char *stripSemicolon(char string[]) { int position = strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+void freeInstruction(instruction *inst) {
+    if (inst == NULL) return;
+    free(inst->operation);
+    for (int i = 0; i < inst->argumentCount; i++) {
+        free(inst->arguments[i]);
+    }
+    free(inst);
+}
+
+void freeVariable(variable var) { free(var.name); free(var.value); }
+void freeLabel(label labia) { free(labia.name); } // haha minge funny ._.
+
+char *stripSemicolon(char input[]) { char *string = strdup(input); int position = strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
 int findNumberArgs(char instruction[]) {
     for (int i = 0; i < sizeof(validInstructions) / sizeof(validInstructions[0]); i++) {
         for (int j = 0; j < sizeof(validInstructions[i]) / sizeof(validInstructions[i][0]); j++) { 
@@ -101,8 +113,22 @@ int findNumberArgs(char instruction[]) {
     return -1;
 }
 
-char *lowerize(char string[]) { for (int i = 0; i < strlen(string); i++) { string[i] = tolower(string[i]); } return string; }
-void cry(char sob[]) { perror(sob); exit(2384708919); }
+char *lowerize(const char input[]) { char *string = strdup(input); int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); } return string; }
+void toLowerString(char string[]) { int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); }} // mutates the string to save a couple of cycles
+
+void cleanUp() { // hey, if it doesnt work, it'll exit out anyways amirite?
+    for (int i = 0; i < instructionCount; i++) { freeInstruction(instructions[i]); }
+    for (int i = 0; i < vars; i++) { freeVariable(storedVariables[i]); }
+    for (int i = 0; i < labelCount; i++) { freeLabel(labels[i]); }
+
+    free(instructions); free(storedVariables); free(labels);
+}
+
+void cry(char sob[]) { 
+    perror(sob); 
+    cleanUp();
+    exit(2384708919); 
+}
 
 instruction *add_instruction(char inst[], char *arguments[]) {
     int args = findNumberArgs(inst);
@@ -111,17 +137,13 @@ instruction *add_instruction(char inst[], char *arguments[]) {
     if (strcmp(inst, "set") == 0 && strcmp(arguments[0], "in") == 0 || strcmp(inst, "write") == 0) args = 2; // also a special case
     instruction *instruct = (instruction *)malloc(sizeof(instruction) + sizeof(char*) * args);
     instruct->operation = strdup(stripSemicolon(inst)); instruct->argumentCount = args;
-    for (int i = 0; i < args; i++) {
-        instruct->arguments[i] = strdup(stripSemicolon(arguments[i]));
-    }
+    for (int i = 0; i < args; i++) { instruct->arguments[i] = strdup(stripSemicolon(arguments[i])); }
     DEBUG_PRINT("added instruction %s of arg count %d\n", instruct->operation, instruct->argumentCount);
     return instruct;
 }
 
 variable create_variable(char name[], int type, char value[]) {
-    variable var;
-    var.name = strdup(name); var.type = type;
-    var.value = strdup(value); var.valueLength = strlen(value) + 1;
+    variable var = { .name = strdup(name), .type = type, .value = strdup(value), .valueLength = strlen(value) + 1 };
     DEBUG_PRINT("created variable %s of type %d with value %s\n", var.name, var.type, var.value);
     return var;
 }
@@ -176,13 +198,12 @@ int findLabel(int instruction, int argument) {
 void openStartingFiles(const char path[]) {
     FILE *file = fopen(path, "r");
     if (file == NULL) { cry("failed to find a simas file!\n"); }
-    int labelCount = 0;
     while (1) {
         char buffer[100]; char buffer2[100]; char string[100];
         char *args[10];
         int argc = 0; int expectedArgs = 0;
         fscanf(file, "%s", &buffer); 
-        strcpy(buffer, lowerize(buffer));
+        toLowerString(buffer);
         if (feof(file)) break;
 
         if (strcmp(buffer, "please") == 0) { continue; }
@@ -196,20 +217,13 @@ void openStartingFiles(const char path[]) {
 
         expectedArgs = findNumberArgs(buffer);
 
-        if (expectedArgs >= 1) { 
-            fscanf(file, "%s", &buffer2); 
-            args[argc] = (char *)malloc(strlen(buffer2) + 1); 
-            strcpy(args[argc], buffer2); 
-            argc++; 
-            DEBUG_PRINT("first arg: %s\n", buffer2); 
-        }
-
+        if (expectedArgs >= 1) { fscanf(file, "%s", &buffer2); args[argc] = strdup(buffer2); argc++; DEBUG_PRINT("first arg: %s\n", buffer2); }
         if (strcmp(buffer, "label") == 0) { labels[labelCount] = create_label(buffer2, instructionCount - 1); labelCount += 1; continue; }
         if ((strcmp(buffer, "printc") == 0 || strcmp(buffer, "write") == 0) || (grabType(buffer2) == STR && (strcmp(buffer, "set") == 0) || (strcmp(buffer, "eqc") == 0) || (strcmp(buffer, "neqc") == 0))) {
             if (strcmp(buffer, "eqc") == 0 || strcmp(buffer, "neqc") == 0 || strcmp(buffer, "set") == 0) { // we're gonna force these ones to add an extra variable 'cause otherwise it breaks
                 char variable[100];
                 fscanf(file, "%s", &variable);
-                args[argc] = (char *)malloc(strlen(variable) + 1); strcpy(args[argc], variable); argc++; DEBUG_PRINT("second arg: %s\n", variable); 
+                args[argc] = strdup(variable); argc++; DEBUG_PRINT("second arg: %s\n", variable); 
                 expectedArgs = 3;
             }
             fseek(file, 1, SEEK_CUR); /* skip the space */
@@ -217,12 +231,10 @@ void openStartingFiles(const char path[]) {
                 fscanf(file, "%c", &string[i]);
                 if (string[i] == ';') { string[i] = '\0'; break; }
                 
-                if (string[i] == 'n' && string[i - 1] == '\\') {
-                    string[i - 1] = '\n'; i--; continue;
-                }
+                if (string[i] == 'n' && string[i - 1] == '\\') { string[i - 1] = '\n'; i--; continue; }
             }
             DEBUG_PRINT("created string \"%s\"\n", string);
-            args[argc] = (char *)malloc(strlen(string) + 1); strcpy(args[argc], string); argc++; 
+            args[argc] = strdup(string); argc++; 
         }
 
         if (expectedArgs > argc) {
@@ -231,8 +243,7 @@ void openStartingFiles(const char path[]) {
                 fscanf(file, "%s", &buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
                 strcpy(buffer2, stripSemicolon(buffer2));
                 if (findNumberArgs(buffer2) != -1 || !feof(file) || expectedArgs != -1) {
-                    args[argc] = (char *)malloc(strlen(buffer2) + 1); 
-                    strcpy(args[argc], buffer2); argc++;
+                    args[argc] = strdup(buffer2); argc++;
                     DEBUG_PRINT("arg: %s\n", buffer2);
                 } else {
                     fseek(file, -1 * (strlen(buffer2) + 1), SEEK_CUR); // back the FUCK UP
@@ -270,7 +281,7 @@ void doMath(int operation, int instruction) { // 1 for addition, 2 for subtracti
     }
     if (operation == 4 && operand2 == 0) { cry("div by 0 error. eat shit and die, nerd\n"); }
 
-    float output = 0;
+    float output;
     switch (operation) {
         case 1: output = operand1 + operand2; break;
         case 2: output = operand1 - operand2; break;
@@ -279,7 +290,7 @@ void doMath(int operation, int instruction) { // 1 for addition, 2 for subtracti
         default: output = -1; break;
     }
     int temp = (int)output;
-    if ((float)temp == output) { isFloatMath = 0; }
+    if ((float)temp == output) { isFloatMath = 0; } // very cursed float check.
     char tempStr[100];
     
     if (isFloatMath) { sprintf(tempStr, "%f", output); }
@@ -310,7 +321,7 @@ void conv(int instruction) {
         storedVariables[location].type = type;
     } 
     else if (storedVariables[location].type == type) { /* do nothing, as you cannot convert to the same type, fucknuts */ } 
-    else { printf("invalid variable type.\n"); exit(1); }
+    else { cry("invalid variable type.\n"); }
 }
 
 
@@ -318,12 +329,9 @@ void readFile(int instruction) {
     FILE *file = fopen(instructions[instruction]->arguments[0], "rb");
     if (file == NULL) {cry("unable to open file.");}
     int location = findVar(instruction, 1);
-    char *temp;
-    long length;
-    fseek(file, 0, SEEK_END);
-    length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    temp = malloc(length);
+    char *temp; long length;
+    fseek(file, 0, SEEK_END); length = ftell(file);
+    fseek(file, 0, SEEK_SET); temp = malloc(length);
     fread(temp, 1, length, file);
     storedVariables[location].type = STR;
     storedVariables[location].valueLength = strlen(temp) + 1;
@@ -347,7 +355,7 @@ void setVar(int instruction) {
         temp[strcspn(temp, "\n")] = '\0'; // compensate for the newline by fucking yeeting it out of existence
         set_variable_value(&storedVariables[location], temp);
     } else { storedVariables[location].type = type; set_variable_value(&storedVariables[location], instructions[instruction]->arguments[2]); }
-    if (type == BOOL) { strcpy(storedVariables[location].value, lowerize(storedVariables[location].value)); }
+    if (type == BOOL) { toLowerString(storedVariables[location].value); }
 }
 
 void compare(int operation, int instruction) { // oh look 10 fucking functions in one. yippers
@@ -358,13 +366,13 @@ void compare(int operation, int instruction) { // oh look 10 fucking functions i
         if (location1 == -1) { operand1 = atof(instructions[instruction]->arguments[1]); }
         else {
             if (storedVariables[location1].type == NUM) { operand1 = atof(storedVariables[location1].value); }
-            else { printf("Operand must be of \"num\" type!\n"); exit(1); }
+            else { cry("Operand must be of \"num\" type!\n"); }
         }
         
         if (location2 == -1) { operand2 = atof(instructions[instruction]->arguments[2]); }
         else {
             if (storedVariables[location2].type == NUM) { operand2 = atof(storedVariables[location2].value); }
-            else { printf("Operand must be of \"num\" type!\n"); exit(1); }
+            else { cry("Operand must be of \"num\" type!\n"); }
         }
     } else if (operation == '&' || operation == '|') {
         if (location1 == -1) {
@@ -372,7 +380,7 @@ void compare(int operation, int instruction) { // oh look 10 fucking functions i
         } else {
             if (storedVariables[location1].type == BOOL) {
                 if (strstr(storedVariables[location1].value, "true")) { operand1 = 1; }
-            } else { printf("Operand must be of \"bool\" type!\n"); exit(1); }
+            } else { cry("Operand must be of \"bool\" type!\n"); }
         }
         
         if (location2 == -1) {
@@ -380,7 +388,7 @@ void compare(int operation, int instruction) { // oh look 10 fucking functions i
         } else {
             if (storedVariables[location2].type == BOOL) {
                 if (strstr(storedVariables[location2].value, "true")) { operand2 = 1; }
-            } else { printf("Operand must be of \"bool\" type!\n"); exit(1); }
+            } else { cry("Operand must be of \"bool\" type!\n"); }
         }
     }
 
@@ -493,5 +501,8 @@ int main(int argc, const char * argv[]) {
         else if (strcmp(current_instruction, "read") == 0) { readFile(j); } 
         else { cry("Invalid instruction!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n(i am sorry, but this codebase is held together with duct tape T_T)"); }
     }
+
+    cleanUp();
+
     return 0;
-}
+} // we are the shinglefuckers of xingbing ltd.
