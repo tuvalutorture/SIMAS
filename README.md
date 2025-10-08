@@ -170,6 +170,52 @@ Differences:
 * OPERAND 2: the first value, being a variable name
 * OPERAND 3: the second value, optionally being a variable name
 
+### Lists
+
+#### - list
+* list operations. lists are a special data structure that allows you to have multiple values in a single container.
+* OPERAND 1: type of operation
+* OPERAND 2: name of the list
+* All of the list operations:
+    * `list new`
+        * creates a new list
+    * `list appv`
+        * append a variable to a list
+        * OPERAND 3: data type of the variable
+        * OPERAND 4: name of the variable
+    * `list appc`
+        * append a constant to a list
+        * OPERAND 3: data type of the constant
+        * OPERNAD 4: the constant
+    * `list upv`
+        * update the list item at a specific index with a variable
+        * OPERAND 3: the index, starting from 1
+        * OPERAND 4: the data type of the variable
+        * OPERAND 4: name of the variable
+    * `list upc`
+        * update the list item at a specific index with a constant
+        * OPERAND 3: the index, starting from 1
+        * OPERAND 4: the data type of the constant
+        * OPERAND 4: the constant
+    * `list del`
+        * delete an item from the list
+        * OPERAND 3: the index of the item, starting from 1
+    * `list acc`
+        * access an item from a list and store it in a variable
+        * OPERAND 3: the index, starting from 1
+        * OPERAND 4: the name of the variable that you want to store the value in.
+    * `list show`
+        * print out the entire list to the standard output
+    * `list dump`
+        * writes a list to a file
+        * OPERAND 3: file name
+    * `list load`
+        * loads a list from a file
+        * OPERAND 3: file name
+    * `list len`
+        * returns the number of elements in a list
+        * OPERAND 3: the name of the variable to store the value in
+
 ### Console I/O
 
 #### - print
@@ -213,3 +259,8 @@ Differences:
 * OPERAND 1: the type of value. If the operand here is "in", then the value of the user input will be stored at this variable, with `str` type
 * OPERAND 2: the name of the variable
 * OPERAND 3: the value you wish to assign, if not using "in" as OPERAND 1
+
+#### - type
+* get the type of a variable
+* OPERAND 1: the variable name
+* OPERAND 2: the type of OPERAND 1 will be assigned to this variable as a string

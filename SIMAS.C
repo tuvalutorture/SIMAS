@@ -1,51 +1,49 @@
-/* CMAS (C SIMAS "SIMple ASsembly") interpreter             */
-/* written by tuvalutorture                                 */
-/* a feral child powered purely by rhcp and soda            */
-/* pull on my lever it's, my guilty pleasure yes,           */
-/* yes this codebase is abhorrent                           */
-/* rome wasn't built in a day, but this was built in a week */
-/* the gods of olympus have abandonded me                   */
+/* CMAS (C SIMAS "SIMple ASsembly") interpreter - by tuvalutorture  */
+/* pull on my lever it's, my guilty pleasure yes,                   */
+/* the gods of olympus have abandonded me                           */
 
-/* "G3" was a term used by apple to refer to the PowerPC    */
-/* 750 series CPU back in the late 90's / early 2000's when */
-/* they produced computers using the PPC 750 processor,     */
-/* as "G3" was a marketing term. PowerPC is a cpu           */
-/* architecture based on the IBM "POWER" Architecture,      */
-/* and was formed as a result of Apple, IBM, and Motorola   */
-/* creating a new architecture, due to the Motorola 68k     */
-/* series line slowly becoming a dead-end for Apple         */
-/* Computers due to its inabilities to outperform Intel     */
-/* and other such x86 machines. "G4" and "G5"               */
-/* would later be used for subsequent Apple computers       */
-/* featuring later PowerPC processors, with G4 referring to */
-/* the 7400/8400 families of CPU (which were G3-based       */
-/* 32-bit CPUs featuring AltiVec, or "Velocity Engine" for  */
-/* enhanced media capabilities), and G5 referred to the     */
-/* 7500/8500 series CPUs, and were a new 64-bit             */
-/* architecture, as well as were the first PowerPC          */
-/* processors to feature Dual-core capabilities without     */
-/* requiring 2 separate CPUs. Additionally, PowerPC would   */
-/* see success outside of Apple Computers, such as the G3   */
-/* would see use in other platforms, such as the Nintendo   */
-/* GameCube, or a G5-based chip being used in the Xbox 360. */
-/* However, due to rampant heat issues and unscalability    */
-/* of the G5 architecture as a whole, Apple Computers would */
-/* choose to ditch the PowerPC architecture in favor of     */
-/* Intel's x86 offerings, which would also put it on par    */
-/* with other standard home computers at the time, which    */
-/* typically ran x86 processors with Windows, often called  */
-/* "Wintel" computers. This switch to the x86 platform      */
-/* had the unintended consequence of enabling users to run  */
-/* Windows natively alongside their Mac OS X installation.  */
-/* At first, this was not officially supported by Apple,    */
-/* but Apple later chose to add support in Mac OS X 10.5    */
-/* and is still present in the operating system, but is     */
-/* notably missing from M-series Macintoshes, as the ARM    */
-/* architecture is incompatible with Windows, despite an    */
-/* official ARM port of Windows existing. However, it       */
-/* cannot be natively installed, as it has no drivers nor   */
-/* bootloader compatibility for the M-series Macs, as new   */
-/* Macintoshes require a more specialized boot process.     */
+/* trivia time!!! did you know:                                     */
+/* "G3" was a term used by apple to refer to the PowerPC 750 series */
+/* CPU back in the late 90's / early 2000's when they produced      */
+/* computers using the PPC 750 processor, using "G3" as a marketing */
+/* term. PowerPC is a cpu architecture based on the IBM "POWER"     */
+/* Architecture, and was formed as a result of Apple, IBM, and      */
+/* Motorola creating a new architecture, due to the Motorola 68k    */
+/* series line slowly becoming a dead-end for Apple Computers       */
+/* due to its inabilities to outperform Intel and other x86 chips.  */
+/* "G4" and "G5" would later be used for subsequent Apple computers */
+/* featuring later PowerPC processors, with G4 referring to the     */
+/* 7400/8400 families of CPU (which were G3-based 32-bit CPUs       */
+/* featuring AltiVec, or "Velocity Engine"), and G5 referred to the */
+/* 7500/8500 series CPUs, and were a new 64-bit architecture, as    */
+/* well as were the first PowerPC processors to feature Dual-core   */
+/* capabilities without requiring 2 separate CPUs. Additionally,    */
+/* PowerPC would see success outside of Apple Computers, such as    */
+/* the G3 would see use in platforms such as the Nintendo GameCube, */
+/* or a G5-based chip being used in the Xbox 360. However, due to   */
+/* rampant heat issues and unscalability of the PPC architecture    */
+/* as a whole, Apple Computers would choose to ditch PowerPC        */
+/* in favor of Intel's x86 offerings, which would also put it       */
+/* on par with other standard home computers at the time, which     */
+/* typically ran x86 processors with Windows. This switch to x86    */
+/* had the unintended consequence of enabling users to run Windows  */
+/* natively alongside their Mac OS X installation. At first, this   */
+/* was not officially supported by Apple, but Apple later chose     */
+/* to add support in Mac OS X 10.5, and is still present in the OS, */
+/* but is notably missing from M-series Macintoshes, as the ARM     */
+/* chips in Macs are incompatible with Windows, despite an official */
+/* ARM port of Windows existing. However, the reason it cannot be   */
+/* natively installed is because has no drivers nor bootloader      */
+/* compatibility for the M-series Macs, as newer Macintoshes have   */
+/* a more specialized boot process.                                 */
+
+/* the automobile seatbelt was invented by John Lennon the CCXXVII  */
+/* in 375 BC and 204 years later his child, John Bing the MCLXXVI   */
+/* of Cornholio invented the windshield wiper in the year of our    */
+/* lord 171 BC, but their inventions were lost to time in the year  */
+/* 582 ACDC, and were only just now redicovered in the present day. */
+
+/* ok ok ok you're here for code, so here's code:                   */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -93,23 +91,25 @@ typedef struct {
     instruction **instructions;
     variable *variables;
     label *labels;
+    list *lists;
     int instructionCount;
     int variableCount;
     int labelCount;
+    int listCount;
 } openFile;
 
 char *validInstructions[][15] = { // the row indicates how many arguments they should typically have
     {"println", "prints", "printc", "please", "@", "quit", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    {"jump", "not", "print", "label", "type", "write", "import", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
-    {"copy", "conv", "jumpv", "writev", "read", "list", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+    {"jump", "not", "print", "label", "import", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+    {"copy", "conv", "jumpv", "writev", "read", "list", "write", "type", NULL, NULL, NULL, NULL, NULL, NULL, NULL},
     {"eqc", "eqv", "neqc", "neqv", "add", "sub", "mul", "div", "set", "ste", "st", "gte", "gt", "and", "or"}
 };
 
-char *listInstructions[][3] = {
-    {"new", "show", NULL},
-    {"dump", "del", "load"},
-    {"appv", "appc", "acc"},
-    {"upv", "upc", NULL}
+char *listInstructions[][5] = {
+    {"new", "show", NULL, NULL, NULL},
+    {"dump", "del", "load", "len", "load"},
+    {"appv", "appc", "acc", NULL, NULL},
+    {"upv", "upc", NULL, NULL, NULL}
 };
 
 openFile *files;
@@ -125,7 +125,7 @@ void freeInstruction(instruction *inst) {
 void cleanUp(instruction **instructionSet, variable *variables, label *labelSet, int numInstructions, int numVariables, int numLabels); // forward decl...
 
 void freeVariable(variable var) { free(var.name); free(var.value); }
-void freeLabel(label labia) { free(labia.name); } // haha minge funny ._.
+void freeLabel(label l) { free(l.name); }
 void freeList(list lis) { free(lis.name); for (int i = 0; i < lis.elements; i++) { freeVariable(lis.variables[i]); }}
 void freeFile(openFile file) {
     free(file.path);
@@ -141,6 +141,10 @@ void cleanUp(instruction **instructionSet, variable *variables, label *labelSet,
 }
 
 char *stripSemicolon(char input[]) { char *string = strdup(input); int position = strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(const char input[]) { char *string = strdup(input); int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); } return string; }
+void lowerizeInPlace(char string[]) { int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); }} // mutates the string to save a couple of cycles
+void stripSemicolonInPlace(char string[]) { int position = strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; }
+
 int findNumberArgs(char instruction[]) {
     for (int i = 0; i < sizeof(validInstructions) / sizeof(validInstructions[0]); i++) {
         for (int j = 0; j < sizeof(validInstructions[i]) / sizeof(validInstructions[i][0]); j++) { 
@@ -155,22 +159,22 @@ int findListArgs(char instruction[]) {
     for (int k = 0; k < sizeof(listInstructions) / sizeof(listInstructions[0]); k++) {
         for (int l = 0; l < sizeof(listInstructions[k]) / sizeof(listInstructions[k][0]); l++) { 
             if (listInstructions[k][l] == NULL) { break; }
-            if (strcmp(stripSemicolon(instruction), listInstructions[k][l]) == 0) { return k + 2; }
+            if (strcmp(stripSemicolon(instruction), listInstructions[k][l]) == 0) { return k; }
         }
     }
     return -1;
 }
 
-char *lowerize(const char input[]) { char *string = strdup(input); int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); } return string; }
-void toLowerString(char string[]) { int len = strlen(string); for (int i = 0; i < len; i++) { string[i] = tolower(string[i]); }} // mutates the string to save a couple of cycles
-
 void cry(char sob[]) { printf(sob); exit((int)2384708919); }
 
 instruction *add_instruction(char inst[], char *arguments[]) {
-    int args = findNumberArgs(inst); // prevents the feeding of garbage arguments by verifying it against the list of instructions and how many args they'll typically have
+    int args = 0;
+    if (strcmp(inst, "list") == 0) { args = findListArgs(arguments[0]) + 2; }
+    else { args = findNumberArgs(inst); } // prevents the feeding of garbage arguments by verifying it against the list of instructions and how many args they'll typically have
     if (args == -1) { printf("%s is not an instruction!\n", inst); exit(1); }
-    if (strcmp(inst, "printc") == 0) args = 1; // special case 'cause fuck you and fuck my sanity
-    if (strcmp(inst, "set") == 0 && strcmp(lowerize(arguments[0]), "in") == 0 || strcmp(inst, "write") == 0) args = 2; // also a special case
+    if (strcmp(inst, "printc") == 0) args = 1;  // special case 'cause fuck you and fuck my sanity
+    if (strcmp(inst, "set") == 0 && strcmp(lowerize(arguments[0]), "in") == 0) args = 2;
+    
     instruction *instruct = (instruction *)malloc(sizeof(instruction) + sizeof(char*) * args);
     instruct->operation = stripSemicolon(inst); instruct->argumentCount = args;
     for (int i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }
@@ -192,8 +196,7 @@ label create_label(char name[], int location) {
 
 list create_list(char name[]) {
     list new;
-    new.variables = (variable *)malloc(sizeof(variable)); // create one dummy variable
-    new.variables[0] = create_variable("", STR, "");
+    new.variables = NULL;
     new.name = strdup(name);
     new.elements = 0;
     return new;
@@ -208,7 +211,7 @@ void set_variable_value(variable *var, char value[]) {
 }
 
 int grabType(char type[]) {
-    toLowerString(type);
+    lowerizeInPlace(type);
     if (strcmp(type, "str") == 0) { return STR; }
     else if (strcmp(type, "num") == 0) { return NUM; }
     else if (strcmp(type, "bool") == 0) { return BOOL; }
@@ -216,38 +219,40 @@ int grabType(char type[]) {
     else { return -1; }
 }
 
-/* 
 void appendElement(list *li, variable var) {
     li->variables = realloc(li->variables, sizeof(variable) * (li->elements + 1));
     if (li->variables == NULL) cry("SHIT, A MALLOC FAILED");
-    set_variable_value(&li->variables[li->elements], var.value);
+    li->variables[li->elements] = create_variable(var.name, var.type, var.value);
     li->elements++;
 }
 
 void removeElement(list *li, int element) {
-    freeVariable(li->variables[element]);
-    for (int i = element + 1; i < li->elements; i++) { set_variable_value(&li->variables[i - 1], li->variables[i].value); }
+    for (int i = element + 1; i < li->elements; i++) { li->variables[i - 1] = create_variable(li->variables[i].name, li->variables[i].type, li->variables[i].value); }
+    freeVariable(li->variables[li->elements - 1]); // free the last element in the array now that its been shifted
     li->variables = realloc(li->variables, sizeof(variable) * (li->elements - 1));
     if (li->variables == NULL) cry("SHIT, A MALLOC FAILED");
     li->elements--;
 }
 
 char *formatList(list li) {
-
-}
-
-int findList(char name[]) {
-    int location = 0; int found = 0;
-    for (int k = 0; k < listCount; k++) { 
-        if (strcmp(lists[k].name, name) == 0) { 
-            DEBUG_PRINT("found list %s at %d\n", lists[location].name, location);
-            found = 1; break; 
-        } 
-        location++; 
+    char *string;
+    int bytes = 3;
+    for (int i = 0; i < li.elements; i++) {
+        bytes += strlen(li.variables[i].value) + 2; 
+        if (li.variables[i].type == STR) bytes += 2; // quotes
     }
-    if (found) { return location; } else { return -1; }
-} 
-*/
+    string = malloc(bytes); if (string == NULL) cry("List Formatting failed!");
+    string[0] = '\0';
+    strcat(string, "[");
+    for (int i = 0; i < li.elements; i++) {
+        if (li.variables[i].type == STR) strcat(string, "\""); 
+        strcat(string, li.variables[i].value);
+        if (li.variables[i].type == STR) strcat(string, "\""); 
+        if (i + 1 != li.elements) strcat(string, ","); // make sure no trailing comma is left
+    }
+    strcat(string, "]");
+    return string;
+}
 
 variable *findVar(variable **variableSet, int *count, char name[], int createIfNotFound) {
     int location = 0; int found = 0;
@@ -283,10 +288,23 @@ label *findLabel(label *labelSet, int count, char name[]) {
     else return NULL;
 }
 
+list *findList(list *listSet, int count, char name[]) {
+    int location = 0; int found = 0;
+    for (int k = 0; k < count; k++) { 
+        if (strcmp(listSet[k].name, name) == 0) { 
+            DEBUG_PRINT("found list %s at %d\n", listSet[location].name, location);
+            found = 1; break; 
+        } 
+        location++; 
+    }
+    if (found) { return &(listSet)[location]; } 
+    else { return NULL; }
+} 
+
 void executeFile(openFile current); // forward decl. so it can be used in openFile
 
 openFile openSimasFile(const char path[]) {
-    FILE *file = fopen(path, "r");
+    FILE *file = fopen(path, "rb");
     if (file == NULL) { cry("failed to find a simas file!\n"); }
 
     for (int i = 0; i < openFiles; i++) { if (strcmp(path, files[i].path) == 0) cry("Already opened!"); }
@@ -296,11 +314,12 @@ openFile openSimasFile(const char path[]) {
     new.path = strdup(path);
 
     while (1) {
-        char buffer[100]; char buffer2[100]; char string[100];
+        DEBUG_PRINT("goin back for more\n");
+        char buffer[100]; char buffer2[100];
         char *args[10];
         int argc = 0; int expectedArgs = 0;
         fscanf(file, "%s", &buffer); 
-        toLowerString(buffer);
+        lowerizeInPlace(buffer);
         if (feof(file)) break;
 
         if (strcmp(buffer, "please") == 0) { continue; }
@@ -317,6 +336,16 @@ openFile openSimasFile(const char path[]) {
         if (expectedArgs >= 1) { fscanf(file, "%s", &buffer2); args[argc] = strdup(buffer2); argc++; DEBUG_PRINT("first arg: %s\n", buffer2); }
         if (strcmp(buffer, "label") == 0) { new.labels = (label *)realloc(new.labels, sizeof(label) * (new.labelCount + 1)); new.labels[new.labelCount] = create_label(buffer2, new.instructionCount - 1); new.labelCount += 1; continue; }
 
+        if (strcmp(buffer, "list") == 0) { // find the instruction, as it is guaranteed to be the first argument
+            expectedArgs = findListArgs(buffer2) + 2; // there are always at least 2 arguments in a list instruction
+            char buffer3[100]; fscanf(file, "%s", &buffer3);  
+            stripSemicolonInPlace(buffer3);
+            DEBUG_PRINT("list arg: %s\n", buffer3);
+            args[argc] = strdup(buffer3); argc++; 
+        }
+
+        if (strcmp(lowerize(buffer2), "in") == 0 && strcmp(buffer, "set")) expectedArgs--;
+
         if ((strcmp(buffer, "printc") == 0 || strcmp(buffer, "write") == 0) || (grabType(buffer2) == STR && (strcmp(buffer, "set") == 0) || (strcmp(buffer, "eqc") == 0) || (strcmp(buffer, "neqc") == 0))) {
             if (strcmp(buffer, "eqc") == 0 || strcmp(buffer, "neqc") == 0 || strcmp(buffer, "set") == 0) { // we're gonna force these ones to add an extra variable 'cause otherwise it breaks
                 char variable[100];
@@ -324,29 +353,32 @@ openFile openSimasFile(const char path[]) {
                 args[argc] = strdup(variable); argc++; DEBUG_PRINT("second arg: %s\n", variable); 
                 expectedArgs = 3;
             }
-            fseek(file, 1, SEEK_CUR); /* skip the space */
-            for (int i = 0; i < 99; i++) {
-                fscanf(file, "%c", &string[i]);
-                if (string[i] == ';') { string[i] = '\0'; break; }
-                
-                if (string[i] == 'n' && string[i - 1] == '\\') { string[i - 1] = '\n'; i--; continue; }
+            char *string; int distance = 0; char character = '\0';
+            while (character != ';') { fscanf(file, "%c", &character); distance++; }
+            fseek(file, (-1 * (distance - 1)), SEEK_CUR); 
+            string = calloc(distance + 1, distance + 1);
+            fread(string, 1, distance - 1, file);
+            string[strlen(string)] = '\0';
+            for (int i = 0; i < strlen(string); i++) {
+                if (string[i + 1] == 'n' && string[i] == '\\') { 
+                    string[i] = '\n';
+                    continue; 
+                }
             }
+            stripSemicolonInPlace(string);
             DEBUG_PRINT("created string \"%s\"\n", string);
-            args[argc] = strdup(string); argc++; 
+            args[argc] = strdup(string); argc++; free(string);
         }
 
-        if (expectedArgs > argc) {
-            for (int i = 0; i < expectedArgs - 1; i++) {
-                if (strcmp(buffer2, "in") == 0) i = 1;
-                fscanf(file, "%s", &buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
-                strcpy(buffer2, stripSemicolon(buffer2));
-                if (findNumberArgs(buffer2) != -1 || !feof(file) || expectedArgs != -1) {
-                    args[argc] = strdup(buffer2); argc++;
-                    DEBUG_PRINT("arg: %s\n", buffer2);
-                } else {
-                    fseek(file, -1 * (strlen(buffer2) + 1), SEEK_CUR); // back the FUCK UP
-                    break;
-                }
+        while (expectedArgs > argc) {
+            fscanf(file, "%s", &buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
+            stripSemicolonInPlace(buffer2);
+            if (findNumberArgs(buffer2) != -1 || !feof(file)) {
+                args[argc] = strdup(buffer2); argc++;
+                DEBUG_PRINT("arg: %s\n", buffer2);
+            } else {
+                fseek(file, -1 * (strlen(buffer2) + 1), SEEK_CUR); // back the FUCK UP
+                break;
             }
         }
 
@@ -420,7 +452,7 @@ void setVar(variable *var, int type, char* value) {
         set_variable_value(var, value);
     } 
     var->type = type; set_variable_value(var, value);
-    if (type == BOOL) { toLowerString(var->value); }
+    if (type == BOOL) { lowerizeInPlace(var->value); }
 }
 
 int compare(int operation, char operand1[], char operand2[]) { // oh look 10 fucking functions in one. yippers
@@ -505,11 +537,22 @@ void executeFile(openFile current) {
             else { sprintf(tempStr, "%d", (int)output); }
             set_variable_value(var1, tempStr);
         } 
-
         else if (strcmp(current_instruction, "set") == 0) { 
             int type = grabType(current.instructions[j]->arguments[0]);
             if (type == IN) { setVar(findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[1], 1), type, ""); }
             else { setVar(findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[1], 1), type, current.instructions[j]->arguments[2]); }
+        }
+        else if (strcmp(current_instruction, "type") == 0) {
+            variable *check = findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[0], 0); 
+            variable *var = findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[1], 1); 
+            int type = check->type; char *output; var->type = STR;
+            switch (type) {
+                case NUM: output = strdup("num"); break;
+                case BOOL: output = strdup("bool"); break;
+                case STR: output = strdup("str"); break;
+                default: output = strdup("none"); break;
+            }
+            set_variable_value(var, output);
         }
 
         else if (strcmp(current_instruction, "printc") == 0) { printf("%s", current.instructions[j]->arguments[0]); } 
@@ -518,6 +561,8 @@ void executeFile(openFile current) {
         else if (strcmp(current_instruction, "print") == 0) { printf("%s", findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[0], 0)->value); } 
         else if (strcmp(current_instruction, "quit") == 0) { exit(0); } 
         else if (strcmp(current_instruction, "conv") == 0) { conv(findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[0], 0), grabType(current.instructions[j]->arguments[1])); } 
+        else if (strcmp(current_instruction, "write") == 0) { writeFile(current.instructions[j]->arguments[0], current.instructions[j]->arguments[1]); } 
+        else if (strcmp(current_instruction, "writev") == 0) { writeFile(current.instructions[j]->arguments[0], findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[1], 0)->value); } 
 
         else if (strcmp(current_instruction, "st") == 0 || strcmp(current_instruction, "ste") == 0 || strcmp(current_instruction, "gt") == 0 || strcmp(current_instruction, "gte") == 0 ||
                 strcmp(current_instruction, "and") == 0 || strcmp(current_instruction, "or") == 0 || strcmp(current_instruction, "eqc") == 0 || strcmp(current_instruction, "eqv") == 0 ||
@@ -575,29 +620,58 @@ void executeFile(openFile current) {
             free(operand1); free(operand2);
         }
         
-        else if (strcmp(current_instruction, "write") == 0) { writeFile(current.instructions[j]->arguments[0], current.instructions[j]->arguments[1]); } 
-        else if (strcmp(current_instruction, "writev") == 0) { writeFile(current.instructions[j]->arguments[0], findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[1], 0)->value); } 
-        /*         
         else if (strcmp(current_instruction, "list") == 0) {
-            char *listInstruction = strdup(instructions[j]->arguments[0]);
-            char *listName = strdup(instructions[j]->arguments[1]);
-            int location;
-            if (listCount) location = findList(listName);
-            toLowerString(listInstruction);
+            char *listInstruction = strdup(current.instructions[j]->arguments[0]);
+            lowerizeInPlace(listInstruction);
+
+            list *li = findList(current.lists, current.listCount, current.instructions[j]->arguments[1]);
+
             if (strcmp(listInstruction, "new") == 0) {
-                lists = (list *)realloc(lists, sizeof(list) * (listCount));
-                lists[listCount] = create_list(instructions[j]->arguments[1]);
-                listCount++;
+                current.lists = (list *)realloc(current.lists, sizeof(list) * (current.listCount));
+                current.lists[current.listCount] = create_list(current.instructions[j]->arguments[1]);
+                current.listCount++;
             }
-            else if (strcmp(listInstruction, "appv") == 0) { appendElement(&lists[location], storedVariables[findVar(instructions[j]->arguments[3])]); }
+
+            else if (strcmp(listInstruction, "appv") == 0) { appendElement(li, *findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[3], 0)); }
             else if (strcmp(listInstruction, "appc") == 0) { 
-                variable var = { .type = grabType(instructions[j]->arguments[2]), .value = instructions[j]->arguments[3] };
-                appendElement(&lists[location], var); 
+                variable var = { .type = grabType(current.instructions[j]->arguments[2]), .value = current.instructions[j]->arguments[3] };
+                appendElement(li, var); 
             }
+            else if (strcmp(listInstruction, "show") == 0) { printf("%s", formatList(*li)); }
+            else if (strcmp(listInstruction, "dump") == 0) { writeFile(current.instructions[j]->arguments[2], formatList(*li)); }
+            
+            else if (strcmp(listInstruction, "len") == 0) {
+                variable *var = findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[2], 1); 
+                char length[10];
+                sprintf(length, "%d", li->elements); DEBUG_PRINT("%s", length);
+                *var = create_variable(var->name, NUM, length);
+            }
+
+            else if (strcmp(listInstruction, "acc") == 0) {
+                variable *var = findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[3], 1); 
+                int element = atoi(current.instructions[j]->arguments[2]) - 1;
+                *var = create_variable(var->name, li->variables[element].type, li->variables[element].value);
+            }
+
+            else if (strcmp(listInstruction, "del") == 0) { removeElement(li, atoi(current.instructions[j]->arguments[2]) - 1); }
+
+            else if (strcmp(listInstruction, "upv") == 0) { 
+                variable *var = findVar(&current.variables, &current.variableCount, current.instructions[j]->arguments[4], 0); 
+                li->variables[atoi(current.instructions[j]->arguments[2]) - 1] = *var;
+            }
+            else if (strcmp(listInstruction, "upc") == 0) { 
+                variable var = { .type = grabType(current.instructions[j]->arguments[3]), .value = current.instructions[j]->arguments[4] };
+                li->variables[atoi(current.instructions[j]->arguments[2]) - 1] = var; 
+            }
+
+            else if (strcmp(listInstruction, "load") == 0) {
+                // might add it l8r if im feelin cute
+            }
+
+            else { cry("Invalid list instruction!"); }
+
             free(listInstruction);
-            free(listName);
         } 
-        */
         else { cry("Invalid instruction!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n(i am sorry, but this codebase is held together with duct tape T_T)"); }
     }
 
@@ -610,4 +684,4 @@ int main(int argc, const char * argv[]) {
     if (argc == 4) { if (strcmp(argv[3], "-j") == 0 || strcmp(argv[3], "--jmp") == 0) { debugMode = 2; printf("jump debugger enabled\n"); }}
     executeFile(openSimasFile(argv[1]));
     return 0;
-} // we are the shinglefuckers of xingbing ltd.
+} // we are the shinglefuckers of bong juice ltd.
