@@ -21,20 +21,9 @@ For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<b
 
 All occurences of `\n` within string constants (such as PRINTC) will be replaced with a new line.
 
-**Differences** <br>
-
-In this version of SIMAS, which can also be called CMAS (C SIMAS),  
-there are a few key differences between CMAS and SIMASJS (the main fork).  
-
-Differences:
-* CMAS does not support Lists or Functions at this moment.
-* CMAS does not require a compilation step.
-* CMAS runs atop a C based interpreter, while SIMASJS is JavaScript based.
-* For most things, CMAS requires you to create a var AHEAD of use (though COPY will automatically create one of the desired name if it doesn't exist)
-
 > [!NOTE]
 > This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
-> As of now, SIMAS/CMAS has *ONLY* been confirmed to work on Mac (Xcode) & Windows (CL). Your mileage on other platforms/compilers may vary.
+> As of now, SIMAS/CMAS has *ONLY* been confirmed to work on Windows using the MSVC compiler. Your mileage on other platforms/compilers may vary.
 
 > [!IMPORTANT]
 > When doing file I/O (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file (such as providing a ```.\```), or else it will fail.
@@ -208,9 +197,6 @@ Differences:
         * print out the entire list to the standard output
     * `list dump`
         * writes a list to a file
-        * OPERAND 3: file name
-    * `list load`
-        * loads a list from a file
         * OPERAND 3: file name
     * `list len`
         * returns the number of elements in a list
