@@ -1,0 +1,17 @@
+# Ignore the "tests" folder
+tests/
+
+# Ignore the ".vscode" folder
+.vscode/
+
+# Ignore all ".out" files
+*.out
+
+# Ignore the testing Linux executable
+simas
+
+# Ignore massif reports
+massif.*
+
+# Ignore macOS metadata
+._*
