@@ -136,10 +136,10 @@ void freeFile(openFile file) {
     if (file.path != NULL) { free(file.path); }
 }
 
-char *stripSemicolon(char input[]) { char *string = strdup(input); int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
-char *lowerize(const char input[]) { char *string = strdup(input); int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
-void lowerizeInPlace(char string[]) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }} // mutates the string to save a couple of cycles
-void stripSemicolonInPlace(char string[]) { int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; }
+char *stripSemicolon(char *input) { char *string = strdup(input); int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(char *input) { char *string = strdup(input); int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
+void lowerizeInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }} // mutates the string to save a couple of cycles
+void stripSemicolonInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
 
 int findNumberArgs(char *instruction) {
     for (int i = 0; i < (int)(sizeof(validInstructions) / sizeof(validInstructions[0])); i++) {
@@ -222,10 +222,10 @@ void appendElement(list *li, variable var) {
 }
 
 void removeElement(list *li, int element) {
-    DEBUG_PRINT("%d %d", element, li->elements);
-    if (element != li->elements - 1) { for (int i = element + 1; i < li->elements; i++) { li->variables[i - 1] = create_variable(li->variables[i].name, li->variables[i].type, li->variables[i].value); }}
+    DEBUG_PRINT("%d %d\n", element, li->elements);
+    freeVariable(li->variables[element]); // free the element in the array
     li->elements -= 1;
-    freeVariable(li->variables[li->elements]); // free the last element in the array now that its been shifted
+    if (element != li->elements) { for (int i = element + 1; i < li->elements + 1; i++) { memcpy(&li->variables[i - 1], &li->variables[i], sizeof(variable)); }} 
     li->variables = (variable *)realloc(li->variables, sizeof(variable) * (li->elements));
     if (li->variables == NULL) cry("SHIT, A MALLOC FAILED");
 }
@@ -250,7 +250,7 @@ char *formatList(list li) {
     return string;
 }
 
-variable *findVar(variable **variableSet, int *count, char name[], int createIfNotFound) {
+variable *findVar(variable **variableSet, int *count, char *name, int createIfNotFound) {
     int location = 0; int found = 0;
     for (int k = 0; k < *count; k++) {
         if (strcmp((*variableSet)[k].name, name) == 0) { 
@@ -262,7 +262,7 @@ variable *findVar(variable **variableSet, int *count, char name[], int createIfN
 
     if (!found) { 
         if (createIfNotFound) {
-            *variableSet = realloc(*variableSet, sizeof(variable) * (*count + 1));
+            (*variableSet) = realloc(*variableSet, sizeof(variable) * (*count + 1));
             (*variableSet)[*count] = create_variable(name, NUM, "0");
             location = *count; (*count)++; found = 1;
         }
@@ -366,18 +366,12 @@ openFile openSimasFile(const char path[]) {
                     expectedArgs = 3;
                     free(variable);
                 }
-                char *string = NULL; int i = 0; char c = (char)fgetc(file); int stringSize = 0; // fgetc here to skip over the extraneous space
-                while ((c = (char)fgetc(file)) != ';') {
-                    if (i + 5 >= stringSize) {
-                        stringSize += 5; // just one. we dont really care for parse speed here.
-                        string = (char *)realloc(string, stringSize); 
-                        if (string == NULL) { cry("oops, done fucked up. dying now"); }
-                    }
-                    string[i] = c;
-                    if (i > 0 && string[i] == 'n' && string[i - 1] == '\\') { string[i - 1] = '\n'; i--; } // replace it with a newline and yeet the pointer backwards 
-                    i++;
-                }
-                string[strlen(string) + 1] = '\0'; // null terminate that bitch
+                char *string = NULL; int i = 0; char c = (char)fgetc(file); long stringSize = 1; // fgetc here to skip over the extraneous space
+                while ((c = (char)fgetc(file)) != ';') { stringSize++; }
+                fseek(file, -1L * stringSize, SEEK_CUR);
+                string = (char *)calloc(1, (size_t)stringSize + 1);
+                fread(string, 1, (size_t)stringSize, file);
+                stripSemicolonInPlace(string);
                 DEBUG_PRINT("created string \"%s\"\n", string);
                 args = realloc(args, sizeof(char *) * (argc + 1)); 
                 args[argc] = strdup(string); argc++; free(string);
@@ -525,10 +519,10 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
     }  
     else if (strcmp(operation, "import") == 0) { executeFile(openSimasFile(arguments[0])); }
     else if (strcmp(operation, "copy") == 0) {
-        variable *var1 = findVar(variables, variableCount, arguments[0], 0); 
+        variable var1 = *findVar(variables, variableCount, arguments[0], 0); 
         variable *var2 = findVar(variables, variableCount, arguments[1], 1); 
-        set_variable_value(var2, var1->value);
-        var2->type = var1->type;
+        set_variable_value(var2, var1.value);
+        var2->type = var1.type;
     } 
     else if (strcmp(operation, "not") == 0) {
         variable *var = findVar(variables, variableCount, arguments[0], 0); 
@@ -540,7 +534,8 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         char *fileContents = readFile(arguments[0]);
         set_variable_value(var, fileContents);
         free(fileContents);
-    }     else if (strcmp(operation, "add") == 0 || strcmp(operation, "sub") == 0 || strcmp(operation, "mul") == 0 || strcmp(operation, "div") == 0) { 
+    }
+    else if (strcmp(operation, "add") == 0 || strcmp(operation, "sub") == 0 || strcmp(operation, "mul") == 0 || strcmp(operation, "div") == 0) { 
         int op = 0; double op1 = 0; double op2 = 0;
         if (strcmp(operation, "add") == 0) op = 1;
         else if (strcmp(operation, "sub") == 0) op = 2;
@@ -566,9 +561,9 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         otherwise { setVar(findVar(variables, variableCount, arguments[1], 1), type, arguments[2]); }
     }
     else if (strcmp(operation, "type") == 0) {
-        variable *check = findVar(variables, variableCount, arguments[0], 0); 
+        variable check = *findVar(variables, variableCount, arguments[0], 0); 
         variable *var = findVar(variables, variableCount, arguments[1], 1); 
-        int type = check->type; char *output; var->type = STR;
+        int type = check.type; char *output; var->type = STR;
         switch (type) {
             case NUM: output = strdup("num"); break;
             case BOOL: output = strdup("bool"); break;
@@ -658,7 +653,7 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         }
         else if (strcmp(listInstruction, "appv") == 0) {  
             variable *var = findVar(variables, variableCount, arguments[3], 0);
-            variable tempVar = { .name = strdup(var->name), .type = var->type, .value = strdup(var->value) };
+            variable tempVar = { .type = var->type, .value = strdup(var->value) };
             appendElement(li, tempVar); 
         }
         else if (strcmp(listInstruction, "appc") == 0) { 
@@ -685,7 +680,8 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         else if (strcmp(listInstruction, "acc") == 0) {
             variable *var = findVar(variables, variableCount, arguments[3], 1); 
             int element = atoi(arguments[2]) - 1;
-            *var = create_variable(var->name, li->variables[element].type, li->variables[element].value);
+            var->type = li->variables[element].type;
+            set_variable_value(var, li->variables[element].value);
         }
 
         else if (strcmp(listInstruction, "del") == 0) { removeElement(li, atoi(arguments[2]) - 1); }

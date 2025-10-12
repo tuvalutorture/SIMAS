@@ -21,13 +21,6 @@ For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<b
 
 All occurences of `\n` within string constants (such as PRINTC) will be replaced with a new line.
 
-> [!NOTE]
-> This is a REIMPLEMENTATION of the majority of SIMAS features. This may behave differently or not support certain commands.<br>
-> As of now, SIMAS/CMAS has *ONLY* been confirmed to work on Windows using the MSVC compiler. Your mileage on other platforms/compilers may vary.
-
-> [!IMPORTANT]
-> When doing file I/O (READ, WRITE, WRITEV), you MUST give an EXPLICIT path to the file (such as providing a ```.\```), or else it will fail.
-
 ## DOCUMENTATION 
 ### DATA TYPES 
 #### - bool : a boolean value.
