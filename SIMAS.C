@@ -61,7 +61,7 @@
 #define BOOL 3
 #define IN 4
 
-#define DEBUG_PRINT if (debugMode) printf // macro abuse at it's finest
+#define DEBUG_PRINT if (debugMode) printf // macro abuse at its finest
 
 int debugMode = 0;
 
@@ -354,13 +354,23 @@ openFile openSimasFile(const char path[]) {
     return new;
 }
 
+void *convertLiteralNewLineToActualNewLine(char *string) { // because some ppl will unironically type "\n" to do a newline
+    int sizeOf = strlen(string);
+    for (int i = 1; i < sizeOf; i++) { 
+        if (string[i] == 'n' && string[i - 1] == '\\') { 
+            string[i - 1] = '\n'; i--; 
+            memcpy(string + i + 1, string + 2 + i, sizeOf - i);
+        }
+    } 
+}
+
 char *joinStringsSentence(char **strings, int stringCount, int offset) {
     char *finalString = NULL; int sizeOf = 0;
     if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
     for (int i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
     finalString = (char *)calloc(1, sizeOf + 1); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
     for (int i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} // fuck yo optimization
-    for (int j = 1; j < sizeOf; j++) { if (finalString[j] == 'n' && finalString[j - 1] == '\\') { finalString[j - 1] = '\n'; j--; }} // because some ppl will unironically type "\n" to do a newline
+    convertLiteralNewLineToActualNewLine(finalString);
     return finalString;
 }
 
