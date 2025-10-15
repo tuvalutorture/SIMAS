@@ -61,7 +61,7 @@
 #define BOOL 3
 #define IN 4
 
-#define DEBUG_PRINT if (debugMode) printf // the definition of "holy fucking hell kill it with fire" but it still works because macros are god's cmd+f
+#define DEBUG_PRINT if (debugMode) printf // macro abuse at it's finest
 
 int debugMode = 0;
 
@@ -108,13 +108,6 @@ char *validInstructions[][15] = { // the row indicates how many arguments they s
     {"eqc", "eqv", "neqc", "neqv", "add", "sub", "mul", "div", "set", "ste", "st", "gte", "gt", "and", "or"}
 };
 
-char *listInstructions[][5] = {
-    {"new", "show", NULL, NULL, NULL},
-    {"dump", "del", "load", "len", "load"},
-    {"appv", "appc", "acc", NULL, NULL},
-    {"upv", "upc", NULL, NULL, NULL}
-};
-
 void freeInstruction(instruction *inst) {
     if (inst == NULL) return;
     free(inst->operation);
@@ -151,16 +144,6 @@ int findNumberArgs(char *instruction) {
     return -1;
 }
 
-int findListArgs(char *instruction) {
-    for (int k = 0; k < (int)(sizeof(listInstructions) / sizeof(listInstructions[0])); k++) {
-        for (int l = 0; l < (int)(sizeof(listInstructions[k]) / sizeof(listInstructions[k][0])); l++) { 
-            if (listInstructions[k][l] == NULL) { break; }
-            if (strcmp(instruction, listInstructions[k][l]) == 0) { return k; }
-        }
-    }
-    return -1;
-}
-
 void cry(char sob[], ...) { va_list args; va_start(args, sob); vprintf(sob, args); va_end(args); exit((int)2384708919); } // this is how i feel trying to debug this
 
 instruction *add_instruction(char *inst, char *arguments[], int args) {
@@ -169,7 +152,7 @@ instruction *add_instruction(char *inst, char *arguments[], int args) {
     
     instruction *instruct = (instruction *)malloc(sizeof(instruction) + sizeof(char*) * args);
     if (args >= 1) { instruct->arguments = (char **)malloc(sizeof(char*) * args); for (int i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
-    else { instruct->arguments = NULL; }
+    otherwise { instruct->arguments = NULL; }
     instruct->operation = strdup(ins); instruct->argumentCount = args;
     DEBUG_PRINT("added instruction %s of arg count %d\n", instruct->operation, instruct->argumentCount);
     free(ins);
@@ -208,9 +191,9 @@ void set_variable_value(variable *var, char value[]) {
 int grabType(char *input) {
     char *type = lowerize(input);
     if (strcmp(type, "str") == 0) { free(type); return STR; }
-    else if (strcmp(type, "num") == 0) { free(type); return NUM; }
-    else if (strcmp(type, "bool") == 0) { free(type); return BOOL; }
-    else if (strcmp(type, "in") == 0) { free(type); return IN; }
+    otherwise if (strcmp(type, "num") == 0) { free(type); return NUM; }
+    otherwise if (strcmp(type, "bool") == 0) { free(type); return BOOL; }
+    otherwise if (strcmp(type, "in") == 0) { free(type); return IN; }
     otherwise { free(type); return -1; }
 }
 
@@ -268,7 +251,7 @@ variable *findVar(variable **variableSet, int *count, char *name, int createIfNo
         }
     }
     if (found) { return &(*variableSet)[location]; }
-    else return NULL;
+    otherwise return NULL;
 }
 
 label *findLabel(label *labelSet, int count, char name[]) {
@@ -281,7 +264,7 @@ label *findLabel(label *labelSet, int count, char name[]) {
         location++; 
     }
     if (found) { return &(labelSet)[location]; }
-    else return NULL;
+    otherwise return NULL;
 }
 
 list *findList(list *listSet, int count, char name[]) {
@@ -296,6 +279,16 @@ list *findList(list *listSet, int count, char name[]) {
     if (found) { return &(listSet)[location]; } 
     otherwise { return NULL; }
 } 
+
+void preprocessLabels(openFile *new) {
+    for (int i = 0; i < new->instructionCount; i++) {
+        if (strcmp(new->instructions[i]->operation, "label") == 0) { 
+            new->labels = (label *)realloc(new->labels, sizeof(label) * (new->labelCount + 1)); 
+            new->labels[new->labelCount] = create_label(new->instructions[i]->arguments[0], i - 1); 
+            new->labelCount += 1;
+        }
+    }
+}
 
 openFile openSimasFile(const char path[]) {
     FILE *file = fopen(path, "rb");
@@ -312,97 +305,63 @@ openFile openSimasFile(const char path[]) {
         char *buffer2 = NULL; char **args = NULL;
         int argc = 0; int expectedArgs = 0;
         if (buffer == NULL) cry("welp, no buffer = no parsing = no execution. so guess im dying now");
-        fscanf(file, "%99s", buffer); 
-        lowerizeInPlace(buffer);
-        stripSemicolonInPlace(buffer);
-        if (strlen(buffer) < 1) {free(buffer); break; }
+        fscanf(file, "%99s", buffer); lowerizeInPlace(buffer); stripSemicolonInPlace(buffer);
+        if (strlen(buffer) < 1) { free(buffer); break; }
         DEBUG_PRINT("%s", buffer);
 
         if (strcmp(buffer, "please") == 0) { free(buffer); continue; }
-
         if (strchr(buffer, '@') != NULL) { 
-            if (strchr(buffer, ';') != NULL) { continue; }
-            char currentChar = ' '; 
-            while ((currentChar = (char)fgetc(file)) != ';');
-            free(buffer);
-            continue; 
+            if (strchr(buffer, ';') != NULL) { continue; } char currentChar = ' '; 
+            while ((currentChar = (char)fgetc(file)) != ';'); free(buffer); continue; 
         }
 
         expectedArgs = findNumberArgs(buffer);
 
-        if (expectedArgs >= 1) { 
-            args = (char **)malloc(sizeof(char *));
-            if (strcmp(buffer, "printc") != 0) {
-                buffer2 = (char *)calloc(1, standardBufferSize);
-                if (buffer2 == NULL) cry("THE ARGUMENT BUFFER DIED!!!");
-                fscanf(file, "%99s", buffer2); 
-                stripSemicolonInPlace(buffer2);
+        args = (char **)malloc(sizeof(char *));
+        buffer2 = (char *)calloc(1, standardBufferSize);
+        if (buffer2 == NULL) cry("THE ARGUMENT BUFFER DIED!!!");
+
+        while (expectedArgs > 0) {
+            fscanf(file, "%99s", buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
+            char *temp = stripSemicolon(buffer2);
+            if (findNumberArgs(temp) == -1) {
+                if (strcmp(temp, " ") == 0 || strcmp(temp, "") == 0) { free(temp); break; }
                 args = realloc(args, sizeof(char *) * (argc + 1));
-                args[argc] = strdup(buffer2); argc++; 
-                DEBUG_PRINT("first arg: %s\n", buffer2); 
-                char *temp = lowerize(buffer2);
-                if (strcmp(temp, "in") == 0 && strcmp(buffer, "set") == 0) expectedArgs = 2;
-                free(temp); // no memory leaks here, no siree
-            
-                if (strcmp(buffer, "label") == 0) { new.labels = (label *)realloc(new.labels, sizeof(label) * (new.labelCount + 1)); new.labels[new.labelCount] = create_label(buffer2, new.instructionCount - 1); new.labelCount += 1; free(buffer); free(buffer2); free(args[0]); free(args); continue; }
-
-                if (strcmp(buffer, "list") == 0) { // find the instruction, as it is guaranteed to be the first argument
-                    expectedArgs = findListArgs(buffer2) + 2; // there are always at least 2 arguments in a list instruction
-                    char *buffer3 = (char *)malloc(standardBufferSize); 
-                    fscanf(file, "%99s", buffer3);  
-                    DEBUG_PRINT("list arg: %s\n", buffer3);
-                    args = realloc(args, sizeof(char *) * (argc + 1));
-                    args[argc] = stripSemicolon(buffer3); argc++; 
-                    free(buffer3);
-                }   
+                args[argc] = strdup(temp); argc++;
+                DEBUG_PRINT("arg: %s\n", temp);
+            } otherwise {
+                fseek(file, -1 * (long)(strlen(temp) + 1), SEEK_CUR); // back the FUCK UP
+                free(temp); break;
+            } if (strcmp(temp, buffer2) != 0) { // check to see if it's different after the semicolon is stripped
+                free(temp);
+                break;
             }
-            
-            if ((strcmp(buffer, "printc") == 0 || strcmp(buffer, "write") == 0) || ((grabType(buffer2) == STR && (strcmp(buffer, "set") == 0)) || (strcmp(buffer, "eqc") == 0) || (strcmp(buffer, "neqc") == 0))) {
-                if (strcmp(buffer, "eqc") == 0 || strcmp(buffer, "neqc") == 0 || strcmp(buffer, "set") == 0) { // we're gonna force these ones to add an extra variable 'cause otherwise it breaks
-                    char *variable = (char *)malloc(standardBufferSize);
-                    fscanf(file, "%99s", variable);
-                    args = realloc(args, sizeof(char *) * (argc + 1));
-                    args[argc] = strdup(variable); argc++; DEBUG_PRINT("second arg: %s\n", variable); 
-                    expectedArgs = 3;
-                    free(variable);
-                }
-                char *string = NULL; int i = 0; char c = (char)fgetc(file); long stringSize = 1; // fgetc here to skip over the extraneous space
-                while ((c = (char)fgetc(file)) != ';') { stringSize++; }
-                fseek(file, -1L * stringSize, SEEK_CUR);
-                string = (char *)calloc(1, (size_t)stringSize + 1);
-                fread(string, 1, (size_t)stringSize, file);
-                stripSemicolonInPlace(string);
-                DEBUG_PRINT("created string \"%s\"\n", string);
-                args = realloc(args, sizeof(char *) * (argc + 1)); 
-                args[argc] = strdup(string); argc++; free(string);
-            }
-
-            while (expectedArgs > argc && !feof(file)) {
-                fscanf(file, "%99s", buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
-                stripSemicolonInPlace(buffer2);
-                if (findNumberArgs(buffer2) == -1) {
-                    args = realloc(args, sizeof(char *) * (argc + 1));
-                    args[argc] = strdup(buffer2); argc++;
-                    DEBUG_PRINT("arg: %s\n", buffer2);
-                } otherwise {
-                    fseek(file, -1 * (long)(strlen(buffer2) + 1), SEEK_CUR); // back the FUCK UP
-                    break;
-                }
-            }
-
-            if (buffer2 != NULL) free(buffer2); 
+            free(temp);
         }
+
+        free(buffer2); 
 
         new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
         if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
         new.instructions[new.instructionCount] = add_instruction(buffer, args, argc);
+        new.instructionCount += 1;
         if (argc >= 1) { for (int i = 0; i < argc; i++) { DEBUG_PRINT("instruction %s has arg %s\n", buffer, args[i]); free(args[i]); }}
         free(buffer); free(args);
-        new.instructionCount += 1;
     }
     for (int i = 0; i < new.instructionCount; i++) { DEBUG_PRINT("%d: %s\n", i, new.instructions[i]->operation); }
+    preprocessLabels(&new);
     fclose(file);
     return new;
+}
+
+char *joinStringsSentence(char **strings, int stringCount, int offset) {
+    char *finalString = NULL; int sizeOf = 0;
+    if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
+    for (int i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
+    finalString = (char *)calloc(1, sizeOf + 1); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
+    for (int i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} // fuck yo optimization
+    for (int j = 1; j < sizeOf; j++) { if (finalString[j] == 'n' && finalString[j - 1] == '\\') { finalString[j - 1] = '\n'; j--; }} // because some ppl will unironically type "\n" to do a newline
+    return finalString;
 }
 
 double doMath(int operation, double operand1, double operand2) { // 1 for addition, 2 for subtraction, 3 for mult, 4 for div
@@ -425,14 +384,14 @@ void conv(variable *var, int type) {
             if (var->type == NUM) {
                 if (atof(var->value) > 0) { strcpy(var->value, "true"); } 
                 otherwise { strcpy(var->value, "false"); }
-            } else if (var->type == BOOL) {
+            } otherwise if (var->type == BOOL) {
                 if (strstr(var->value, "true")) { strcpy(var->value, "1"); } 
                 otherwise { strcpy(var->value, "0"); }
             }
         }
         var->type = type;
     } 
-    else if (var->type == type) { /* do nothing, as you cannot convert to the same type, fucknuts */ } 
+    otherwise if (var->type == type) { /* do nothing, as you cannot convert to the same type, fucknuts */ } 
     otherwise { cry("invalid variable type.\n"); }
 }
 
@@ -465,7 +424,7 @@ void setVar(variable *var, int type, char* value) {
         val = calloc(1, 100);
         fgets(val, 99, stdin);
         val[strcspn(val, "\n")] = '\0'; // compensate for the newline by fucking yeeting it out of existence
-    } else { val = strdup(value); }
+    } otherwise { val = strdup(value); }
     var->type = type; set_variable_value(var, val);
     if (type == BOOL) { lowerizeInPlace(var->value); }
     free(val);
@@ -477,7 +436,7 @@ int compare(int operation, char operand1[], char operand2[]) { // oh look 10 fuc
     if (operation == '>' || operation == ']' || operation == '<' || operation == '[') {
         op1 = atof(operand1);
         op2 = atof(operand2);
-    } else if (operation == '&' || operation == '|') {
+    } otherwise if (operation == '&' || operation == '|') {
         if (strcmp(operand1, "true") == 0) { op1 = 1; }
         if (strcmp(operand2, "true") == 0) { op2 = 1; }
     }
@@ -503,49 +462,49 @@ void executeFile(openFile current); // quick forward decl
 void executeInstruction(instruction *current_instruction, variable **variables, label **labels, list **lists, int *variableCount, int *labelCount, int *listCount, int *programCounter) { // all of these are defined up here so this function can operate independently of any files
     char **arguments = current_instruction->arguments;
     char *operation = current_instruction->operation;
-    if (strcmp(operation, "label") == 0) { *labels = (label *)realloc(*labels, sizeof(label) * (*labelCount + 1)); *labels[*labelCount] = create_label(arguments[0], *programCounter); *labelCount += 1; }
-    else if (strcmp(operation, "jumpv") == 0) { // jumps are defined up here as they can only really be done when executing a file
+    if (strcmp(operation, "label") == 0) { return; }
+    otherwise if (strcmp(operation, "jumpv") == 0) { // jumps are defined up here as they can only really be done when executing a file
         label *jump = findLabel(*labels, *labelCount, arguments[0]);
         variable *var = findVar(variables, variableCount, arguments[1], 0); 
         int allowed = 0;
         if (var->type == NUM) { if (atof(var->value) != 0.0) { allowed = 1; }}
-        else if (var->type == BOOL) { if (strcmp(var->value, "true") == 0) { allowed = 1; }}
+        otherwise if (var->type == BOOL) { if (strcmp(var->value, "true") == 0) { allowed = 1; }}
         otherwise { cry("strings cannot be compared"); }
         if (allowed) { if (debugMode == 2) { printf("**pause on jumpv to label %s, press any key to continue**", jump->name); getc(stdin); } *programCounter = jump->location; }
-    } else if (strcmp(operation, "jump") == 0) {
+    } otherwise if (strcmp(operation, "jump") == 0) {
         label *jump = findLabel(*labels, *labelCount, arguments[0]);
         if (debugMode == 2) { printf("**pause on jump to label %s, press any key to continue**", jump->name); getc(stdin); } 
         *programCounter = jump->location; 
     }  
-    else if (strcmp(operation, "import") == 0) { executeFile(openSimasFile(arguments[0])); }
-    else if (strcmp(operation, "copy") == 0) {
+    otherwise if (strcmp(operation, "import") == 0) { executeFile(openSimasFile(arguments[0])); }
+    otherwise if (strcmp(operation, "copy") == 0) {
         variable var1 = *findVar(variables, variableCount, arguments[0], 0); 
         variable *var2 = findVar(variables, variableCount, arguments[1], 1); 
         set_variable_value(var2, var1.value);
         var2->type = var1.type;
     } 
-    else if (strcmp(operation, "not") == 0) {
+    otherwise if (strcmp(operation, "not") == 0) {
         variable *var = findVar(variables, variableCount, arguments[0], 0); 
         if (var->type == BOOL) { if (strcmp(var->value, "true") == 0) { strcpy(var->value, "false"); } otherwise { strcpy(var->value, "true"); }} otherwise { cry("NOT must be used on a bool!"); }
     }
-    else if (strcmp(operation, "read") == 0) { 
+    otherwise if (strcmp(operation, "read") == 0) { 
         variable *var = findVar(variables, variableCount, arguments[1], 1); 
         var->type = STR;
         char *fileContents = readFile(arguments[0]);
         set_variable_value(var, fileContents);
         free(fileContents);
     }
-    else if (strcmp(operation, "add") == 0 || strcmp(operation, "sub") == 0 || strcmp(operation, "mul") == 0 || strcmp(operation, "div") == 0) { 
+    otherwise if (strcmp(operation, "add") == 0 || strcmp(operation, "sub") == 0 || strcmp(operation, "mul") == 0 || strcmp(operation, "div") == 0) { 
         int op = 0; double op1 = 0; double op2 = 0;
         if (strcmp(operation, "add") == 0) op = 1;
-        else if (strcmp(operation, "sub") == 0) op = 2;
-        else if (strcmp(operation, "mul") == 0) op = 3;
-        else if (strcmp(operation, "div") == 0) op = 4;
+        otherwise if (strcmp(operation, "sub") == 0) op = 2;
+        otherwise if (strcmp(operation, "mul") == 0) op = 3;
+        otherwise if (strcmp(operation, "div") == 0) op = 4;
         variable *var1 = findVar(variables, variableCount, arguments[1], 1); 
         variable *var2 = findVar(variables, variableCount, arguments[2], 0);
         if (var1->type != NUM) cry("You can only do math on a 'num' type variable!");
         if (var2 == NULL) { op2 = atof(arguments[2]); }
-        else if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
+        otherwise if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
         otherwise { op2 = atof(var2->value); }
         op1 = atof(var1->value);
 
@@ -555,12 +514,13 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         otherwise { sprintf(tempStr, "%d", (int)output); }
         set_variable_value(var1, tempStr);
     } 
-    else if (strcmp(operation, "set") == 0) { 
+    otherwise if (strcmp(operation, "set") == 0) { 
         int type = grabType(arguments[0]);
         if (type == IN) { setVar(findVar(variables, variableCount, arguments[1], 1), type, ""); }
+        otherwise if (type == STR) { char *concatenated = joinStringsSentence(arguments, current_instruction->argumentCount, 2); setVar(findVar(variables, variableCount, arguments[1], 1), type, concatenated); free(concatenated); }
         otherwise { setVar(findVar(variables, variableCount, arguments[1], 1), type, arguments[2]); }
     }
-    else if (strcmp(operation, "type") == 0) {
+    otherwise if (strcmp(operation, "type") == 0) {
         variable check = *findVar(variables, variableCount, arguments[0], 0); 
         variable *var = findVar(variables, variableCount, arguments[1], 1); 
         int type = check.type; char *output; var->type = STR;
@@ -573,16 +533,16 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         set_variable_value(var, output);
     }
 
-    else if (strcmp(operation, "printc") == 0) { printf("%s", arguments[0]); } 
-    else if (strcmp(operation, "println") == 0) { printf("\n"); } 
-    else if (strcmp(operation, "prints") == 0) { printf(" "); } 
-    else if (strcmp(operation, "print") == 0) { printf("%s", findVar(variables, variableCount, arguments[0], 0)->value); } 
-    else if (strcmp(operation, "quit") == 0) { exit(0); } 
-    else if (strcmp(operation, "conv") == 0) { conv(findVar(variables, variableCount, arguments[0], 0), grabType(arguments[1])); } 
-    else if (strcmp(operation, "write") == 0) { writeFile(arguments[0], arguments[1]); } 
-    else if (strcmp(operation, "writev") == 0) { writeFile(arguments[0], findVar(variables, variableCount, arguments[1], 0)->value); } 
+    otherwise if (strcmp(operation, "printc") == 0) { char *print = joinStringsSentence(arguments, current_instruction->argumentCount, 0); printf("%s", print); free(print); } 
+    otherwise if (strcmp(operation, "println") == 0) { printf("\n"); } 
+    otherwise if (strcmp(operation, "prints") == 0) { printf(" "); } 
+    otherwise if (strcmp(operation, "print") == 0) { printf("%s", findVar(variables, variableCount, arguments[0], 0)->value); } 
+    otherwise if (strcmp(operation, "quit") == 0) { exit(0); } 
+    otherwise if (strcmp(operation, "conv") == 0) { conv(findVar(variables, variableCount, arguments[0], 0), grabType(arguments[1])); } 
+    otherwise if (strcmp(operation, "write") == 0) { writeFile(arguments[0], arguments[1]); } 
+    otherwise if (strcmp(operation, "writev") == 0) { writeFile(arguments[0], findVar(variables, variableCount, arguments[1], 0)->value); } 
 
-    else if (strcmp(operation, "st") == 0 || strcmp(operation, "ste") == 0 || strcmp(operation, "gt") == 0 || strcmp(operation, "gte") == 0 ||
+    otherwise if (strcmp(operation, "st") == 0 || strcmp(operation, "ste") == 0 || strcmp(operation, "gt") == 0 || strcmp(operation, "gte") == 0 ||
             strcmp(operation, "and") == 0 || strcmp(operation, "or") == 0 || strcmp(operation, "eqc") == 0 || strcmp(operation, "eqv") == 0 ||
             strcmp(operation, "neqc") == 0 || strcmp(operation, "neqv") == 0) {
 
@@ -591,54 +551,54 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         char *operand1 = NULL; char *operand2 = NULL; int output = 0;
         if (var1 == NULL) { cry("No variable!"); }
         otherwise { operand1 = strdup(var1->value); }
-        if (var2 == NULL) { operand2 = strdup(arguments[2]); }
+        if (var2 == NULL) { operand2 = joinStringsSentence(arguments, current_instruction->argumentCount, 2); }
         otherwise { operand2 = strdup(var2->value); }
 
         if (strcmp(operation, "st") == 0) { 
             if (var1->type != NUM || (var2 != NULL && var2->type != NUM)) cry("Operand must be of \"num\" type!\n");
             output = compare('<', operand1, operand2); 
         }
-        else if (strcmp(operation, "ste") == 0) {
+        otherwise if (strcmp(operation, "ste") == 0) {
             if (var1->type != NUM || (var2 != NULL && var2->type != NUM)) cry("Operand must be of \"num\" type!\n"); 
             output = compare('[', operand1, operand2); 
         }
-        else if (strcmp(operation, "gt") == 0) { 
+        otherwise if (strcmp(operation, "gt") == 0) { 
             if (var1->type != NUM || (var2 != NULL && var2->type != NUM)) cry("Operand must be of \"num\" type!\n");
             output = compare('>', operand1, operand2); 
         }
-        else if (strcmp(operation, "gte") == 0) { 
+        otherwise if (strcmp(operation, "gte") == 0) { 
             if (var1->type != NUM || (var2 != NULL && var2->type != NUM)) cry("Operand must be of \"num\" type!\n");
             output = compare(']', operand1, operand2); 
         }
 
-        else if (strcmp(operation, "and") == 0) { 
+        otherwise if (strcmp(operation, "and") == 0) { 
             if (var1->type != BOOL || (var2 != NULL && var2->type != BOOL)) cry("Operand must be of \"bool\" type!\n");
             output = compare('&', operand1, operand2); 
         }
-        else if (strcmp(operation, "or") == 0) { 
+        otherwise if (strcmp(operation, "or") == 0) { 
             if (var1->type != BOOL || (var2 != NULL && var2->type != BOOL)) cry("Operand must be of \"bool\" type!\n");
             output = compare('|', operand1, operand2); 
         }
 
-        else if (strcmp(operation, "eqc") == 0) { 
+        otherwise if (strcmp(operation, "eqc") == 0) { 
             free(operand2); operand2 = strdup(arguments[2]);
             output = compare('e', operand1, operand2); 
         }
-        else if (strcmp(operation, "eqv") == 0) { output = compare('e', operand1, operand2); }
-        else if (strcmp(operation, "neqc") == 0) { 
+        otherwise if (strcmp(operation, "eqv") == 0) { output = compare('e', operand1, operand2); }
+        otherwise if (strcmp(operation, "neqc") == 0) { 
             free(operand2); operand2 = strdup(arguments[2]);
             output = compare('n', operand1, operand2); 
         }
-        else if (strcmp(operation, "neqv") == 0) { output = compare('n', operand1, operand2); }
+        otherwise if (strcmp(operation, "neqv") == 0) { output = compare('n', operand1, operand2); }
 
         var1->type = BOOL;
         if (output) set_variable_value(var1, "true");
-        else set_variable_value(var1, "false");
+        otherwise set_variable_value(var1, "false");
 
         free(operand1); free(operand2);
     }
     
-    else if (strcmp(operation, "list") == 0) {
+    otherwise if (strcmp(operation, "list") == 0) {
         char *listInstruction = lowerize(arguments[0]);
         list *li = findList(*lists, *listCount, arguments[1]);
         if (li == NULL && strcmp(listInstruction, "new")) cry("cant find that list!\n");
@@ -651,53 +611,54 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
             free(created);
             (*listCount)++;
         }
-        else if (strcmp(listInstruction, "appv") == 0) {  
+        otherwise if (strcmp(listInstruction, "appv") == 0) {  
             variable *var = findVar(variables, variableCount, arguments[3], 0);
             variable tempVar = { .type = var->type, .value = strdup(var->value) };
             appendElement(li, tempVar); 
         }
-        else if (strcmp(listInstruction, "appc") == 0) { 
-            variable var = { .type = grabType(arguments[2]), .value = strdup(arguments[3]) };
-            appendElement(li, var); 
+        otherwise if (strcmp(listInstruction, "appc") == 0) { 
+            variable var = { .type = grabType(arguments[2]), .value = joinStringsSentence(arguments, current_instruction->argumentCount, 3) };
+            appendElement(li, var);
         }
-        else if (strcmp(listInstruction, "show") == 0) {
+        otherwise if (strcmp(listInstruction, "show") == 0) {
             char *formatted = formatList(*li);
             printf("%s", formatted);
             free(formatted);
         }
-        else if (strcmp(listInstruction, "dump") == 0) {
+        otherwise if (strcmp(listInstruction, "dump") == 0) {
             char *formatted = formatList(*li);
             writeFile(arguments[2], formatted);
             free(formatted);
         }        
-        else if (strcmp(listInstruction, "len") == 0) {
+        otherwise if (strcmp(listInstruction, "len") == 0) {
             variable *var = findVar(variables, variableCount, arguments[2], 1); 
             char length[10];
             sprintf(length, "%d", li->elements); DEBUG_PRINT("%s", length);
             var->type = NUM; set_variable_value(var, length);
         }
 
-        else if (strcmp(listInstruction, "acc") == 0) {
+        otherwise if (strcmp(listInstruction, "acc") == 0) {
             variable *var = findVar(variables, variableCount, arguments[3], 1); 
             int element = atoi(arguments[2]) - 1;
             var->type = li->variables[element].type;
             set_variable_value(var, li->variables[element].value);
         }
 
-        else if (strcmp(listInstruction, "del") == 0) { removeElement(li, atoi(arguments[2]) - 1); }
+        otherwise if (strcmp(listInstruction, "del") == 0) { removeElement(li, atoi(arguments[2]) - 1); }
 
-        else if (strcmp(listInstruction, "upv") == 0) { 
+        otherwise if (strcmp(listInstruction, "upv") == 0) { 
             variable var = *findVar(variables, variableCount, arguments[4], 0); 
             set_variable_value(&li->variables[atoi(arguments[2]) - 1], var.value);
             li->variables[atoi(arguments[2]) - 1].type = var.type;
         }
-        else if (strcmp(listInstruction, "upc") == 0) { 
-            variable var = { .type = grabType(arguments[3]), .value = strdup(arguments[4]) };
+        otherwise if (strcmp(listInstruction, "upc") == 0) { 
+            variable var = { .type = grabType(arguments[3]), .value = joinStringsSentence(arguments, current_instruction->argumentCount, 4) };
             set_variable_value(&li->variables[atoi(arguments[2]) - 1], var.value);
             li->variables[atoi(arguments[2]) - 1].type = var.type;
+            free(var.value);
         }
 
-        else if (strcmp(listInstruction, "load") == 0) {
+        otherwise if (strcmp(listInstruction, "load") == 0) {
             // might add it l8r if im feelin cute
         }
 
@@ -705,8 +666,8 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
 
         free(listInstruction);
     } 
-    else if (strlen(operation) == 0) return;
-    otherwise { cry("Invalid instruction (%s)!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n(i am sorry, but this codebase is held together with duct tape T_T)", operation); }
+    otherwise if (strlen(operation) == 0) return;
+    otherwise { cry("Invalid instruction (%s)!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n", operation); }
 }
 
 void executeFile(openFile current) {
