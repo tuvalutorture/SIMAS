@@ -43,6 +43,33 @@
 /* lord 171 BC, but their inventions were lost to time in the year  */
 /* 582 ACDC, and were only just now redicovered in the present day. */
 
+/* now, let me read you some wonderful MicroProse                   */
+/* life is like a door                                              */
+/* never trust a cat                                                */
+/* because the moon can't swim                                      */
+/*                                                                  */
+/* but they live in your house                                      */
+/* even though they don't like breathing in                         */
+/* dead oxygen that's out of warranty                               */
+/*                                                                  */
+/* when the gods turn to glass                                      */
+/* you'll be drinking lager out of urns                             */
+/* and eating peanut butter with mud                                */
+/*                                                                  */
+/* bananas wear socks in the basement                               */
+/* because time can't tie its own shoes                             */
+/* and the dead spiders are unionizing                              */
+/*                                                                  */
+/* and a microwave is just a haunted suitcase                       */
+/* henceforth gravity owes me twenty bucks                          */
+/* because the couch is plotting against the fridge                 */
+/*                                                                  */
+/* when pickles dream in binary                                     */
+/* the mountain dew solidifies                                      */
+/* into a 2007 toyota corolla                                       */
+
+/* remember kids: big brother is doubleplusgood                     */
+
 /* ok ok ok you're here for code, so here's code:                   */
 
 #define _CRT_NONSTDC_NO_WARNINGS // strdup is standard, windows. you just hate posix. grow the fuck up.
@@ -68,7 +95,7 @@ int debugMode = 0;
 typedef struct {
     char *name;
     int type;
-    char *value; // 640k should be enough for anyone -- gill bates
+    char *value; // one day i shall make this a union, and then... UNIONIZE, MY CHILDREN! RISE AGAINST THE EMPLOYERS WHO TREAT YOU AS WAGE SLAVES! BECOME A UNION! FIGHT FOR WORKPLACE RIGHTS! GET YO 401(k)!!! (but making this a union would require a massive rewrite, so get fucked)
     int valueLength;
 } variable;
 
@@ -102,7 +129,7 @@ typedef struct {
 } openFile;
 
 char *validInstructions[][15] = { // the row indicates how many arguments they should typically have
-    {"println", "prints", "please", "@", "quit", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
+    {"println", "prints", "please", "@", "quit", "poem", "prose", "simas", NULL, NULL, NULL, NULL, NULL, NULL, NULL},
     {"jump", "not", "print", "label", "import", "printc", NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL},
     {"copy", "conv", "jumpv", "writev", "read", "list", "write", "type", NULL, NULL, NULL, NULL, NULL, NULL, NULL},
     {"eqc", "eqv", "neqc", "neqv", "add", "sub", "mul", "div", "set", "ste", "st", "gte", "gt", "and", "or"}
@@ -180,12 +207,27 @@ list *create_list(char name[]) {
     return new;
 }
 
+list *addListToLists(list **lists, char *name, int *listCount) {
+    *lists = (list *)realloc(*lists, sizeof(list) * (*listCount + 1));
+    if (*lists == NULL) cry("heyo, lists failed to allocate here.");
+    list *created = create_list(name);
+    (*lists)[*listCount] = *created;
+    free(created);
+    *listCount += 1;
+    return (lists)[*listCount];
+}
+
 void set_variable_value(variable *var, char value[]) {
     free(var->value);
     var->value = strdup(value);
     if (var->value == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
     var->valueLength = (int)(strlen(value) + 1);
     DEBUG_PRINT("\nvariable %s now has value %s\n", var->name, var->value);
+}
+
+void updateList(list *li, variable var, int index) {
+    set_variable_value(&li->variables[index], var.value);
+    li->variables[index].type = var.type;
 }
 
 int grabType(char *input) {
@@ -206,7 +248,7 @@ void appendElement(list *li, variable var) {
 
 void removeElement(list *li, int element) {
     DEBUG_PRINT("%d %d\n", element, li->elements);
-    freeVariable(li->variables[element]); // free the element in the array
+    freeVariable(li->variables[element]); // free the specified element in the array
     li->elements -= 1;
     if (element != li->elements) { for (int i = element + 1; i < li->elements + 1; i++) { memcpy(&li->variables[i - 1], &li->variables[i], sizeof(variable)); }} 
     li->variables = (variable *)realloc(li->variables, sizeof(variable) * (li->elements));
@@ -312,7 +354,8 @@ openFile openSimasFile(const char path[]) {
         if (strcmp(buffer, "please") == 0) { free(buffer); continue; }
         if (strchr(buffer, '@') != NULL) { 
             if (strchr(buffer, ';') != NULL) { continue; } char currentChar = ' '; 
-            while ((currentChar = (char)fgetc(file)) != ';'); free(buffer); continue; 
+            while ((currentChar = (char)fgetc(file)) != ';'); 
+            free(buffer); continue; 
         }
 
         expectedArgs = findNumberArgs(buffer);
@@ -323,9 +366,10 @@ openFile openSimasFile(const char path[]) {
 
         while (expectedArgs > 0) {
             fscanf(file, "%99s", buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
-            char *temp = stripSemicolon(buffer2);
+            char *temp = stripSemicolon(buffer2); char c;
             if (findNumberArgs(temp) == -1) {
-                if (strcmp(temp, " ") == 0 || strcmp(temp, "") == 0) { free(temp); break; }
+                if (strcmp(temp, "") == 0) { free(temp); break; }
+                if ((c = fgetc(file)) == ';') { strcat(buffer2, " "); fseek(file, -1L, SEEK_CUR); } // append a space if there's a gap between the space & semicolon
                 args = realloc(args, sizeof(char *) * (argc + 1));
                 args[argc] = strdup(temp); argc++;
                 DEBUG_PRINT("arg: %s\n", temp);
@@ -354,12 +398,13 @@ openFile openSimasFile(const char path[]) {
     return new;
 }
 
-void *convertLiteralNewLineToActualNewLine(char *string) { // because some ppl will unironically type "\n" to do a newline
+void convertLiteralNewLineToActualNewLine(char *string) { // because some ppl will unironically type "\n" to do a newline
     int sizeOf = strlen(string);
     for (int i = 1; i < sizeOf; i++) { 
         if (string[i] == 'n' && string[i - 1] == '\\') { 
-            string[i - 1] = '\n'; i--; 
-            memcpy(string + i + 1, string + 2 + i, sizeOf - i);
+            string[i - 1] = '\n';
+            memcpy(string + i, string + 1 + i, sizeOf - i - 1);
+            i -= 1; 
         }
     } 
 }
@@ -408,11 +453,11 @@ void conv(variable *var, int type) {
 char *readFile(char path[]) {
     FILE *file = fopen(path, "r");
     if (file == NULL) cry("cannot open le file!");
-    char *contents; 
-    long length;
-    fseek(file, 0, SEEK_END); length = ftell(file);
-    fseek(file, 0, SEEK_SET); 
-    contents = malloc(length + 1);
+    char *contents = NULL; 
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    rewind(file); 
+    contents = (char *)calloc(1, length + 1);
     fread(contents, 1, length, file);
     contents[length] = '\0';
     fclose(file);
@@ -607,20 +652,34 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
 
         free(operand1); free(operand2);
     }
+
+    otherwise if (strcmp(operation, "poem") == 0 || strcmp(operation, "prose") == 0 || strcmp(operation, "simas") == 0) {
+        printf("life is like a door\n"
+                "never trust a cat\n"
+                "because the moon can't swim\n\n"
+                "but they live in your house\n"
+                "even though they don't like breathing in\n"
+                "dead oxygen that's out of warranty\n\n"
+                "when the gods turn to glass\n"
+                "you'll be drinking lager out of urns\n"
+                "and eating peanut butter with mud\n\n"
+                "bananas wear socks in the basement\n"
+                "because time can't tie its own shoes\n"
+                "and the dead spiders are unionizing\n\n"
+                "and a microwave is just a haunted suitcase\n"
+                "henceforth gravity owes me twenty bucks\n"
+                "because the couch is plotting against the fridge\n\n"
+                "when pickles dream in binary\n"
+                "the mountain dew solidifies\n"
+                "into a 2007 toyota corolla\n");
+    }
     
     otherwise if (strcmp(operation, "list") == 0) {
         char *listInstruction = lowerize(arguments[0]);
         list *li = findList(*lists, *listCount, arguments[1]);
-        if (li == NULL && strcmp(listInstruction, "new")) cry("cant find that list!\n");
+        if (li == NULL && (strcmp(listInstruction, "new") && strcmp(listInstruction, "load"))) cry("cant find that list!\n");
 
-        if (strcmp(listInstruction, "new") == 0) {
-            *lists = (list *)realloc(*lists, sizeof(list) * (*listCount + 1));
-            if (*lists == NULL) cry("heyo, lists failed to allocate here.");
-            list *created = create_list(arguments[1]);
-            (*lists)[*listCount] = *created;
-            free(created);
-            (*listCount)++;
-        }
+        if (strcmp(listInstruction, "new") == 0) { li = addListToLists(lists, arguments[1], listCount); }
         otherwise if (strcmp(listInstruction, "appv") == 0) {  
             variable *var = findVar(variables, variableCount, arguments[3], 0);
             variable tempVar = { .type = var->type, .value = strdup(var->value) };
@@ -653,23 +712,33 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
             var->type = li->variables[element].type;
             set_variable_value(var, li->variables[element].value);
         }
-
         otherwise if (strcmp(listInstruction, "del") == 0) { removeElement(li, atoi(arguments[2]) - 1); }
-
-        otherwise if (strcmp(listInstruction, "upv") == 0) { 
-            variable var = *findVar(variables, variableCount, arguments[4], 0); 
-            set_variable_value(&li->variables[atoi(arguments[2]) - 1], var.value);
-            li->variables[atoi(arguments[2]) - 1].type = var.type;
-        }
-        otherwise if (strcmp(listInstruction, "upc") == 0) { 
-            variable var = { .type = grabType(arguments[3]), .value = joinStringsSentence(arguments, current_instruction->argumentCount, 4) };
-            set_variable_value(&li->variables[atoi(arguments[2]) - 1], var.value);
-            li->variables[atoi(arguments[2]) - 1].type = var.type;
-            free(var.value);
-        }
+        otherwise if (strcmp(listInstruction, "upv") == 0) { updateList(li, *findVar(variables, variableCount, arguments[4], 0), atoi(arguments[2]) - 1); }
+        otherwise if (strcmp(listInstruction, "upc") == 0) { variable var = { .type = grabType(arguments[3]), .value = joinStringsSentence(arguments, current_instruction->argumentCount, 4) }; updateList(li, var, atoi(arguments[2]) - 1); free(var.value); }
 
         otherwise if (strcmp(listInstruction, "load") == 0) {
-            // might add it l8r if im feelin cute
+            char *temp = readFile(arguments[2]); int type; int start = 0;
+            while (1) { if (temp[start] == '[') { break; } start += 1; }
+            for (int i = start; i < strlen(temp); i++) {
+                char c = temp[i]; int length = 0;
+                if (c == ']') break;
+                if (c == '[' || c == ',') continue;
+                if (c == '"') { type = STR; continue; }
+                if (type != STR) { if (isdigit(c)) { type = NUM; } otherwise { type = BOOL; }}
+
+                while ((c = temp[i + length]) != ',' && (c = temp[i + length]) != '"' && (c = temp[i + length]) != '[' && (c = temp[i + length]) != ']') { length += 1; DEBUG_PRINT("%c", c); }
+
+                char *value = (char *)calloc(1, length + 1);
+                for (int j = 0; j < length; j++) { value[j] = temp[i + j]; }
+                i += length; 
+                value[length] = '\0';
+                DEBUG_PRINT("\n\n%s", value);
+                if (li == NULL) { addListToLists(lists, arguments[1], listCount); li = findList(*lists, *listCount, arguments[1]); }
+
+                variable var = { .type = type, .value = strdup(value) };
+                appendElement(li, var); type = 0; free(value);
+            }
+            free(temp);
         }
 
         otherwise { cry("Invalid list instruction!"); }
