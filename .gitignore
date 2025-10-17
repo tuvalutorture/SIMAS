@@ -1,17 +1,22 @@
 # Ignore the "tests" folder
 tests/
 
-# Ignore the ".vscode" folder
+# Ignore Visual Studio settings
 .vscode/
+.vs/
+CppProperties.json
 
 # Ignore all ".out" files
 *.out
 
-# Ignore the testing Linux executable
+# Ignore the testing executables
 simas
+simas.exe
 
 # Ignore massif reports
 massif.*
 
 # Ignore macOS metadata
 ._*
+
+*.obj

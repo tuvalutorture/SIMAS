@@ -70,6 +70,8 @@
 
 /* remember kids: big brother is doubleplusgood                     */
 
+/* WE VIBIN TO THE COMMAND & CONQUER: RED ALERT 2 OST WITH THIS ONE */
+
 /* ok ok ok you're here for code, so here's code:                   */
 
 #define _CRT_NONSTDC_NO_WARNINGS // strdup is standard, windows. you just hate posix. grow the fuck up.
@@ -81,7 +83,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include <stdarg.h>
 
 #define STR 1
 #define NUM 2
@@ -171,12 +172,10 @@ int findNumberArgs(char *instruction) {
     return -1;
 }
 
-void cry(char sob[], ...) { va_list args; va_start(args, sob); vprintf(sob, args); va_end(args); exit((int)2384708919); } // this is how i feel trying to debug this
+void cry(char sob[]) { printf("%s", sob); exit((int)2384708919); } // this is how i feel trying to debug this
 
 instruction *add_instruction(char *inst, char *arguments[], int args) {
-    char *ins = stripSemicolon(inst);
-    if (args == -1) { printf("%s is not an instruction!\n", ins); exit(1); }
-    
+    char *ins = stripSemicolon(inst);    
     instruction *instruct = (instruction *)malloc(sizeof(instruction) + sizeof(char*) * args);
     if (args >= 1) { instruct->arguments = (char **)malloc(sizeof(char*) * args); for (int i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
     otherwise { instruct->arguments = NULL; }
@@ -345,9 +344,9 @@ openFile openSimasFile(const char path[]) {
         DEBUG_PRINT("goin back for more\n");
         char *buffer = (char *)calloc(1, standardBufferSize); 
         char *buffer2 = NULL; char **args = NULL;
-        int argc = 0; int expectedArgs = 0;
+        int argc = 0;
         if (buffer == NULL) cry("welp, no buffer = no parsing = no execution. so guess im dying now");
-        fscanf(file, "%99s", buffer); lowerizeInPlace(buffer); stripSemicolonInPlace(buffer);
+        fscanf(file, "%99s", buffer); lowerizeInPlace(buffer); 
         if (strlen(buffer) < 1) { free(buffer); break; }
         DEBUG_PRINT("%s", buffer);
 
@@ -358,39 +357,35 @@ openFile openSimasFile(const char path[]) {
             free(buffer); continue; 
         }
 
-        expectedArgs = findNumberArgs(buffer);
-
         args = (char **)malloc(sizeof(char *));
         buffer2 = (char *)calloc(1, standardBufferSize);
         if (buffer2 == NULL) cry("THE ARGUMENT BUFFER DIED!!!");
 
-        while (expectedArgs > 0) {
-            fscanf(file, "%99s", buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
-            char *temp = stripSemicolon(buffer2); char c;
-            if (findNumberArgs(temp) == -1) {
-                if (strcmp(temp, "") == 0) { free(temp); break; }
-                if ((c = fgetc(file)) == ';') { strcat(buffer2, " "); fseek(file, -1L, SEEK_CUR); } // append a space if there's a gap between the space & semicolon
-                args = realloc(args, sizeof(char *) * (argc + 1));
-                args[argc] = strdup(temp); argc++;
-                DEBUG_PRINT("arg: %s\n", temp);
-            } otherwise {
-                fseek(file, -1 * (long)(strlen(temp) + 1), SEEK_CUR); // back the FUCK UP
-                free(temp); break;
-            } if (strcmp(temp, buffer2) != 0) { // check to see if it's different after the semicolon is stripped
-                free(temp);
-                break;
-            }
-            free(temp);
-        }
+        char *temp = stripSemicolon(buffer);
 
-        free(buffer2); 
+        if (strcmp(temp, buffer) == 0) { // honestly a SURPRISINGLY GOOD semicolon checker
+            while (1) {
+                fscanf(file, "%99s", buffer2); // sscanf is not soa:ZKXHdbkALDhbfiolSEDJGKLSDGHKASLFDGHKSLDAFGJHLKS sasketchawan or whatever
+                char *argTemp = stripSemicolon(buffer2);
+                if (strcmp(argTemp, "") == 0) { int len = strlen(args[argc - 1]); args[argc - 1] = (char *)realloc(args[argc - 1], len + 2); args[argc - 1][len] = ' '; args[argc - 1][len + 1] = '\0';free(argTemp); break; }
+                args = realloc(args, sizeof(char *) * (argc + 1));
+                args[argc] = strdup(argTemp); argc++;
+                DEBUG_PRINT("arg: %s\n", argTemp);
+
+                if (strcmp(argTemp, buffer2) != 0) { // check to see if it's different after the semicolon is stripped
+                    free(argTemp);
+                    break;
+                }
+                free(argTemp);
+            }
+        }
 
         new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
         if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
-        new.instructions[new.instructionCount] = add_instruction(buffer, args, argc);
+        new.instructions[new.instructionCount] = add_instruction(temp, args, argc);
         new.instructionCount += 1;
-        if (argc >= 1) { for (int i = 0; i < argc; i++) { DEBUG_PRINT("instruction %s has arg %s\n", buffer, args[i]); free(args[i]); }}
-        free(buffer); free(args);
+        if (argc >= 1) { for (int i = 0; i < argc; i++) { DEBUG_PRINT("instruction %s has arg \"%s\"\n", temp, args[i]); free(args[i]); }}
+        free(buffer); free(buffer2);  free(args); free(temp);
     }
     for (int i = 0; i < new.instructionCount; i++) { DEBUG_PRINT("%d: %s\n", i, new.instructions[i]->operation); }
     preprocessLabels(&new);
@@ -398,7 +393,7 @@ openFile openSimasFile(const char path[]) {
     return new;
 }
 
-void convertLiteralNewLineToActualNewLine(char *string) { // because some ppl will unironically type "\n" to do a newline
+void convertLiteralNewLineToActualNewLine(char *string) { // because some ppl will unironically type "\n" to do a newline instead of using println
     int sizeOf = strlen(string);
     for (int i = 1; i < sizeOf; i++) { 
         if (string[i] == 'n' && string[i - 1] == '\\') { 
@@ -417,19 +412,6 @@ char *joinStringsSentence(char **strings, int stringCount, int offset) {
     for (int i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} // fuck yo optimization
     convertLiteralNewLineToActualNewLine(finalString);
     return finalString;
-}
-
-double doMath(int operation, double operand1, double operand2) { // 1 for addition, 2 for subtraction, 3 for mult, 4 for div
-    if (operation == 4 && operand2 == 0) { cry("div by 0 error. eat shit and die, nerd\n"); }
-    double output = 0;
-    switch (operation) {
-        case 1: output = operand1 + operand2; break;
-        case 2: output = operand1 - operand2; break;
-        case 3: output = operand1 * operand2; break;
-        case 4: output = operand1 / operand2; break;
-        default: output = -1; break;
-    }
-    return output; 
 }
 
 void conv(variable *var, int type) {
@@ -550,22 +532,21 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         free(fileContents);
     }
     otherwise if (strcmp(operation, "add") == 0 || strcmp(operation, "sub") == 0 || strcmp(operation, "mul") == 0 || strcmp(operation, "div") == 0) { 
-        int op = 0; double op1 = 0; double op2 = 0;
-        if (strcmp(operation, "add") == 0) op = 1;
-        otherwise if (strcmp(operation, "sub") == 0) op = 2;
-        otherwise if (strcmp(operation, "mul") == 0) op = 3;
-        otherwise if (strcmp(operation, "div") == 0) op = 4;
+        double op1 = 0; double op2 = 0;
         variable *var1 = findVar(variables, variableCount, arguments[1], 1); 
         variable *var2 = findVar(variables, variableCount, arguments[2], 0);
         if (var1->type != NUM) cry("You can only do math on a 'num' type variable!");
         if (var2 == NULL) { op2 = atof(arguments[2]); }
         otherwise if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
         otherwise { op2 = atof(var2->value); }
-        op1 = atof(var1->value);
+        op1 = atof(var1->value); double output = 0;
+        if (strcmp(operation, "add") == 0) output = op1 + op2;
+        otherwise if (strcmp(operation, "sub") == 0) output = op1 - op2;
+        otherwise if (strcmp(operation, "mul") == 0) output = op1 * op2;
+        otherwise if (strcmp(operation, "div") == 0) { if (op2 == (double)0) {cry("div by zero error\neat shit and die, nerd");} otherwise{ output = op1 / op2;}}
 
-        double output = doMath(op, op1, op2); 
         char tempStr[100];
-        if (output - (int)output != 0) { sprintf(tempStr, "%f", output); }
+        if (output - (int)output != 0) { sprintf(tempStr, "%f", output); } // very accursed float check, very yummers
         otherwise { sprintf(tempStr, "%d", (int)output); }
         set_variable_value(var1, tempStr);
     } 
@@ -586,6 +567,7 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
             default: output = strdup("none"); break;
         }
         set_variable_value(var, output);
+        free(output);
     }
 
     otherwise if (strcmp(operation, "printc") == 0) { char *print = joinStringsSentence(arguments, current_instruction->argumentCount, 0); printf("%s", print); free(print); } 
@@ -746,7 +728,7 @@ void executeInstruction(instruction *current_instruction, variable **variables, 
         free(listInstruction);
     } 
     otherwise if (strlen(operation) == 0) return;
-    otherwise { cry("Invalid instruction (%s)!\nUse \"--debug\" to find the issue & report it on the repository here:\nhttps://github.com/tuvalutorture/SIMAS/ \n", operation); }
+    otherwise { /* do nothing, as it's probably just a junk instruction */ }
 }
 
 void executeFile(openFile current) {
