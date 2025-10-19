@@ -1,9 +1,10 @@
 # Ignore the "tests" folder
 tests/
 
-# Ignore Visual Studio settings
+# Ignore IDE settings
 .vscode/
 .vs/
+.idea/
 CppProperties.json
 
 # Ignore all ".out" files
@@ -20,3 +21,6 @@ massif.*
 ._*
 
 *.obj
+
+# testing data
+*.sad
