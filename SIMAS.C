@@ -55,6 +55,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
+#include <time.h>
 
 // nooooo, i got rid of the funny macros :c
 // sorry, if you did actually find them funny
@@ -462,8 +463,10 @@ void beginCommandLine(void) {
     memset(&new, 0, sizeof(openFile));
     new.path = NULL;
 
+    srand(time(NULL));
+
     while (1) {
-        printf("\n$ ");
+        printf("$ ");
         char *value = grabUserInput(256);
         if (!value) { cry("**FATAL ERROR**:\nUnable to allocate memory!\n"); }
         char *temp = stripSemicolon(value); strip(temp, ' ');
@@ -479,16 +482,26 @@ void beginCommandLine(void) {
                     if (new.variables != NULL) { for (int i = 0; i < new.variableCount; i++) { freeVariable(new.variables[i]); } free(new.variables); }
                     if (new.labels != NULL) { for (int i = 0; i < new.labelCount; i++) { freeLabel(new.labels[i]); } free(new.labels); }
                     if (new.lists != NULL) { for (int i = 0; i < new.listCount; i++) { freeList(new.lists[i]); } free(new.lists); }
-                    new.labels = NULL; new.lists = NULL; new.variables = NULL;
-                    new.labelCount = 0; new.variableCount = 0; new.functionCount = 0; freeInstruction(inst); free(value); continue;
-                } else { printf("no instructions to execute"); }
+                    new.labels = NULL; new.lists = NULL; new.variables = NULL; new.labelCount = 0; new.variableCount = 0; new.listCount = 0; freeInstruction(inst); free(value); continue;
+                } else { printf("no instructions to execute\n"); }
             }
             else if (strcmp(inst->operation, "!clear") == 0) { freeFile(new); memset(&new, 0, sizeof(openFile)); }
             else if (strcmp(inst->operation, "!load") == 0) { 
                 if (inst->argumentCount) {
                     freeFile(new);
                     new = openSimasFile(inst->arguments[0]);
-                } else printf("you need to specify a file");
+                    int message = rand() % 20;
+                    switch (message) {
+                        case 1: printf("locked and loaded, kommandant\n"); break;
+                        case 2: printf("program was loaded\n"); break;
+                        case 3: printf("ready for execution, sir\n"); break;
+                        case 4: printf("loaded, sir. anything else?\n"); break;
+                        case 5: printf("done.\n"); break;
+                        case 6: printf("package delivered to your ram.\n"); break;
+                        default: printf("loaded %s successfully\n", inst->arguments[0]); break;
+                    }
+                    
+                } else printf("you need to specify a file\n");
             }
             else if (strcmp(inst->operation, "!fuck") == 0) { printf("no thanks"); }
             else if (strcmp(inst->operation, "!instruction") == 0) {
@@ -499,10 +512,10 @@ void beginCommandLine(void) {
                         free(out);
                     }
 
-                    else if (!new.instructionCount) printf("no instructions");
-                    else if (atoi(inst->arguments[0]) >= new.instructionCount) printf("invalid index");
+                    else if (!new.instructionCount) printf("no instructions\n");
+                    else if (atoi(inst->arguments[0]) >= new.instructionCount) printf("invalid index\n");
                 }
-                else printf("you need to specify an index");
+                else printf("you need to specify an index\n");
             }
             else if (strcmp(inst->operation, "!save") == 0) { 
                 if (inst->argumentCount) {
@@ -514,8 +527,9 @@ void beginCommandLine(void) {
                             free(string); fputc('\n', file); 
                         }
                         fclose(file);
-                    } else printf("unable to open file");
-                } else printf("you need to specify a file");
+                        printf("successfully saved to %s.\n", inst->arguments[0]);
+                    } else printf("unable to open file\n");
+                } else printf("you need to specify a file\n");
             }
             else if (strcmp(inst->operation, "!dump") == 0) { 
                 for (int i = 0; i < new.instructionCount; i++) {
@@ -548,17 +562,17 @@ void beginCommandLine(void) {
                             freeInstruction(new.instructions[atoi(inst->arguments[0]) - 1]);
                             new.instructions[atoi(inst->arguments[0]) - 1] = add_instruction(instrtuct->operation, instrtuct->arguments, instrtuct->argumentCount);
                         } else if (strchr(out, ';') == NULL) {
-                            printf("code must end with a semicolon");
+                            printf("code must end with a semicolon\n");
                         } else if (instrtuct->argumentCount < findNumberArgs(instrtuct->operation)) {
-                            printf("too little arguments for instruction");
+                            printf("too little arguments for instruction\n");
                         }
                         freeInstruction(instrtuct); free(temporary); free(out);
                     }
 
-                    else if (!new.instructionCount) printf("no instructions");
-                    else if (atoi(inst->arguments[0]) >= new.instructionCount) printf("invalid index");
+                    else if (!new.instructionCount) printf("no instructions\n");
+                    else if (atoi(inst->arguments[0]) >= new.instructionCount) printf("invalid index\n");
                 }
-                else printf("you need to specify an index");
+                else printf("you need to specify an index\n");
             }
             else if (strcmp(inst->operation, "!syntax") == 0) {
                 printf(
@@ -569,6 +583,7 @@ void beginCommandLine(void) {
                     "Finally, end the instruction with a semicolon (;).\n"
                 );
             }
+            else if (strcmp(inst->operation, "!count") == 0) { printf("%d", new.instructionCount); }
             else if (strcmp(inst->operation, "!help") == 0) {
                 printf(
                     "CMAS Command List:\n"
@@ -580,24 +595,25 @@ void beginCommandLine(void) {
                     "!load <filename>: Loads a SIMAS file.\n"
                     "!save <filename>: Saves the current SIMAS program to disk.\n"
                     "!run: Executes the current SIMAS program.\n"
+                    "!count: Returns the amount of instructions currently loaded.\n"
                     "!syntax: Walks you through the basic syntax of SIMAS.\n"
                     "Please read the README.md for a list of all instructions and their operators.\n"
                 );
             }
-            else { printf("invalid command"); }
+            else { printf("invalid command\n"); }
         } else if (findNumberArgs(inst->operation) == -1 && strchr(inst->operation, '@') == NULL) {
-            printf("invalid instruction"); freeInstruction(inst); free(value); continue;
+            printf("invalid instruction\n"); freeInstruction(inst); free(value); continue;
         } else {
             if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst->operation)) {
                 new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
                 if (new.instructions == NULL) { printf("**FATAL ERROR**:\nReallocation failed!\n"); free(value); break; }
                 new.instructions[new.instructionCount] = add_instruction(inst->operation, inst->arguments, inst->argumentCount);
                 new.instructionCount += 1;
-                printf("ok");
+                printf("ok\n");
             } else if (inst->argumentCount < findNumberArgs(inst->operation)) {
-                printf("too little arguments for instruction");
+                printf("too little arguments for instruction\n");
             } else {
-                printf("code must end with a semicolon");
+                printf("code must end with a semicolon\n");
             }
         }
 
