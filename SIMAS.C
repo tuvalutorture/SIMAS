@@ -159,8 +159,8 @@ void freeFile(openFile file) {
     if (file.path != NULL) { free(file.path); }
 }
 
-char *stripSemicolon(char *input) { char *string = strdup(input); int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
-char *lowerize(char *input) { char *string = strdup(input); int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
+char *stripSemicolon(char *input) { char *string = strdup(input); if (strlen(input) == 0) { return string; } int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(char *input) { char *string = strdup(input); if (strlen(input) == 0) { return string; } int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
 void lowerizeInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }} // mutates the string to save a couple of cycles
 void stripSemicolonInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
 
@@ -586,15 +586,25 @@ void beginCommandLine(void) {
             else if (strcmp(inst->operation, "!count") == 0) { printf("%d", new.instructionCount); }
             else if (strcmp(inst->operation, "!freak") == 0 || strcmp(inst->operation, "!corn") == 0 || strcmp(inst->operation, "!korn") == 0 || strcmp(inst->operation, "!kornography") == 0) {
                 if (inst->argumentCount && atoi(inst->arguments[0]) > 0) {
-                    printf("Boom-da-da-mmm-dum-na-ee-ma\n"); for (int i = 0; i < atoi(inst->arguments[0]); i++) { printf("Da-boom-da-da-mmm-dum-na-ee-ma\n"); } printf("\n\n**GO!**\n\n");
+                    printf("Boom-da-da-mmm-dum-na-ee-ma\n"); for (int i = 0; i < atoi(inst->arguments[0]); i++) { printf("Da-boom-da-da-mmm-dum-na-ee-ma\n"); } printf("\n\n**GO!**\n\n\n");
                 } printf("So fight, something on the ming-a-ooh\nFight, some things they fight\nSo, something on the ming-a-ooh\nFight, some things they fight\nFight, something off the hee-a-hoo\nNo, some things they fight\nFight, something on the ming-a-hoo\nFight, some things they fight\n");
+            }
+            else if (strcmp(inst->operation, "!egg") == 0 || strcmp(inst->operation, "!easteregg") == 0 || strcmp(inst->operation, "!easter") == 0 || strcmp(inst->operation, "!funnies") == 0) {
+                printf(
+                    "Okay, okay, you're clearly here for the funnies.\n"
+                    "Here's some easter egg commands for you:\n"
+                    "!fuck: The computer does not consent to your advances. Sorry.\n"
+                    "!otherworld/ffx/tidus: Prints the lyrics to FFX's 'Otherworld'.\n"
+                    "!poem/prose/microprose/simas/cmas: Read the official poem (also an instruction).\n"
+                    "!freak/korn/corn/kornography <count>: Read the best part of \"Freak on a Leash\".\n"
+                );
             }
             else if (strcmp(inst->operation, "!help") == 0) {
                 printf(
                     "CMAS Command List:\n"
                     "!quit: Quits the CMAS command line.\n"
                     "!clear: Resets the current program.\n"
-                    "!instruction <index>: Prints the instruction at a specified index, starting from 1.\n"
+                    "!instruction <index>: Prints the instruction at the index, starting from 1.\n"
                     "!edit <index>: Edit the instruction at an index.\n"
                     "!dump: Dumps the current program to terminal.\n"
                     "!load <filename>: Loads a SIMAS file.\n"
