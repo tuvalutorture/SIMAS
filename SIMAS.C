@@ -584,6 +584,11 @@ void beginCommandLine(void) {
                 );
             }
             else if (strcmp(inst->operation, "!count") == 0) { printf("%d", new.instructionCount); }
+            else if (strcmp(inst->operation, "!freak") == 0 || strcmp(inst->operation, "!corn") == 0 || strcmp(inst->operation, "!korn") == 0 || strcmp(inst->operation, "!kornography") == 0) {
+                if (inst->argumentCount && atoi(inst->arguments[0]) > 0) {
+                    printf("Boom-da-da-mmm-dum-na-ee-ma\n"); for (int i = 0; i < atoi(inst->arguments[0]); i++) { printf("Da-boom-da-da-mmm-dum-na-ee-ma\n"); } printf("\n\n**GO!**\n\n");
+                } printf("So fight, something on the ming-a-ooh\nFight, some things they fight\nSo, something on the ming-a-ooh\nFight, some things they fight\nFight, something off the hee-a-hoo\nNo, some things they fight\nFight, something on the ming-a-hoo\nFight, some things they fight\n");
+            }
             else if (strcmp(inst->operation, "!help") == 0) {
                 printf(
                     "CMAS Command List:\n"
