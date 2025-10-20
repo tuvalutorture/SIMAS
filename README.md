@@ -9,6 +9,7 @@ with a syntax that is inspired by the Assembly programming language.<br>
 In SIMAS, each line starts with an instruction, optionally followed by one or more operands, just like Assembly.<br>
 To run a SIMAS program, simply run ```./simas <filename>```. <br>
 Additionally, you can use the ```--debug``` flag to get more info.
+You can also run just ```./simas``` for the SIMAS command line.
 
 **Additional Notes** <br>
 
@@ -191,6 +192,10 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
     * `list dump`
         * writes a list to a file
         * OPERAND 3: file name
+    * `list load`
+        * writes a list to a file
+        * OPERAND 3: the name of the list you want to store to
+        * OPERAND 4: file name
     * `list len`
         * returns the number of elements in a list
         * OPERAND 3: the name of the variable to store the value in
