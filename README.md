@@ -101,6 +101,24 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 2: the first boolean variable, being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
+#### - nand
+* performs logical operation AND on OPERAND 2 and 3; the value will be assigned to OPERAND 2
+* OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
+* OPERAND 2: the first boolean variable, being a variable name
+* OPERAND 3: the second boolean variable, optionally being a variable name
+
+#### - nor
+* performs logical operation OR on OPERAND 2 and 3; the value will be assigned to OPERAND 2
+* OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
+* OPERAND 2: the first boolean variable, being a variable name
+* OPERAND 3: the second boolean variable, optionally being a variable name
+
+#### - xor
+* performs logical operation XOR on OPERAND 2 and 3; the value will be assigned to OPERAND 2
+* OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
+* OPERAND 2: the first boolean variable, being a variable name
+* OPERAND 3: the second boolean variable, optionally being a variable name
+
 #### - eqc
 * equal to comparison operator. value will be assigned to the variable at OPERAND 2
 * ATTENTION: please use this ONLY when OPERAND 2 is a variable name and OPERAND 3 is a constant

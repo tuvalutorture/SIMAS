@@ -1,0 +1,1 @@
+gcc simas.c -o simas -Wall -Wextra -pedantic -g3 -O0
