@@ -40,6 +40,11 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 1: name of the label
 * OPERAND 2: name of a variable. if true, will jump to the label
 
+#### - jumpnv
+* jump to a label. this is a conditional jump
+* OPERAND 1: name of the label
+* OPERAND 2: name of a variable. if false, will jump to the label
+
 #### - label
 * define a label
 * OPERAND 1: name of the label
