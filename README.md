@@ -197,12 +197,12 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
         * update the list item at a specific index with a variable
         * OPERAND 3: the index, starting from 1
         * OPERAND 4: the data type of the variable
-        * OPERAND 4: name of the variable
+        * OPERAND 5: name of the variable
     * `list upc`
         * update the list item at a specific index with a constant
         * OPERAND 3: the index, starting from 1
         * OPERAND 4: the data type of the constant
-        * OPERAND 4: the constant
+        * OPERAND 5: the constant
     * `list del`
         * delete an item from the list
         * OPERAND 3: the index of the item, starting from 1
