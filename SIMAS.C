@@ -1,41 +1,4 @@
 /* CMAS (C SIMAS "SIMple ASsembly") interpreter - by tuvalutorture  */
-/* pull on my lever it's, my guilty pleasure yes,                   */
-/* the gods of olympus have abandonded me                           */
-
-/* trivia time!!! did you know:                                     */
-/* "G3" was a term used by apple to refer to the PowerPC 750 series */
-/* CPU back in the late 90's / early 2000's when they produced      */
-/* computers using the PPC 750 processor, using "G3" as a marketing */
-/* term. PowerPC is a cpu architecture based on the IBM "POWER"     */
-/* Architecture, and was formed as a result of Apple, IBM, and      */
-/* Motorola creating a new architecture, due to the Motorola 68k    */
-/* series line slowly becoming a dead-end for Apple Computers       */
-/* due to its inabilities to outperform Intel and other x86 chips.  */
-/* "G4" and "G5" would later be used for subsequent Apple computers */
-/* featuring later PowerPC processors, with G4 referring to the     */
-/* 7400/8400 families of CPU (which were G3-based 32-bit CPUs       */
-/* featuring AltiVec, or "Velocity Engine"), and G5 referred to the */
-/* 7500/8500 series CPUs, and were a new 64-bit architecture, as    */
-/* well as were the first PowerPC processors to feature Dual-core   */
-/* capabilities without requiring 2 separate CPUs. Additionally,    */
-/* PowerPC would see success outside of Apple Computers, such as    */
-/* the G3 would see use in platforms such as the Nintendo GameCube, */
-/* or a G5-based chip being used in the Xbox 360. However, due to   */
-/* rampant heat issues and unscalability of the PPC architecture    */
-/* as a whole, Apple Computers would choose to ditch PowerPC        */
-/* in favor of Intel's x86 offerings, which would also put it       */
-/* on par with other standard home computers at the time, which     */
-/* typically ran x86 processors with Windows. This switch to x86    */
-/* had the unintended consequence of enabling users to run Windows  */
-/* natively alongside their Mac OS X installation. At first, this   */
-/* was not officially supported by Apple, but Apple later chose     */
-/* to add support in Mac OS X 10.5, and is still present in the OS, */
-/* but is notably missing from M-series Macintoshes, as the ARM     */
-/* chips in Macs are incompatible with Windows, despite an official */
-/* ARM port of Windows existing. However, the reason it cannot be   */
-/* natively installed is because has no drivers nor bootloader      */
-/* compatibility for the M-series Macs, as newer Macintoshes have   */
-/* a more specialized boot process.                                 */
 
 /* the automobile seatbelt was invented by John Lennon the CCXXVII  */
 /* in 375 BC and 204 years later his child, John Bing the MCLXXVI   */
@@ -43,9 +6,19 @@
 /* lord 171 BC, but their inventions were lost to time in the year  */
 /* 582 ACDC, and were only just now redicovered in the present day. */
 
-/* ok ok ok you're here for code, so here's code:                   */
-
-#define _CRT_SECURE_NO_WARNINGS // to make windows shut the everliving fuck up about deprecated functions
+/*                           Stuttering                             */
+/*                          Cold and damp                           */
+/*                 Steal the warm wind, tired friend                */
+/*                          Times are gone                          */
+/*                          For honest men                          */
+/*                 Sometimes, far too long for snakes               */
+/*                           In my shoes                            */
+/*                          Walking sleep                           */
+/*                   In my youth, I pray to keep                    */
+/*                           Heaven send                            */
+/*                            Hell away                             */
+/*                   No one sings like you anymore                  */
+/*    can the sun just fucking collapse into a black hole already   */ 
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,126 +31,243 @@
 #define LIST 4
 #define IN 5
 
-#define DEBUG_PRINTF if (debugMode) printf // macro abuse at its finest
+#define DEBUG_PRINTF if (debugMode) printf /* macro abuse at its finest */
+#define DEBUG_PRINT(string) if (debugMode) puts(string)
+/* the preprocessor is awesome */
+#define ALLOC_DEBUGGING 0
 
 int debugMode = 0;
-const char poem[] = "life is like a door\nnever trust a cat\nbecause the moon can't swim\n\nbut they live in your house\neven though they don't like breathing in\ndead oxygen that's out of warranty\n\nwhen the gods turn to glass\nyou'll be drinking lager out of urns\nand eating peanut butter with mud\n\nbananas wear socks in the basement\nbecause time can't tie its own shoes\nand the dead spiders are unionizing\n\nand a microwave is just a haunted suitcase\nhenceforth gravity owes me twenty bucks\nbecause the couch is plotting against the fridge\n\nwhen pickles dream in binary\nthe mountain dew solidifies\ninto a 2007 toyota corolla\n";
 
-typedef struct {
-    char *name;
+typedef struct listItem listItem;
+typedef struct LinkedList LinkedList;
+typedef struct hashMapItem hashMapItem;
+typedef struct HashMap HashMap;
+
+typedef struct variable variable;
+typedef struct instruction instruction;
+typedef struct openFile openFile;
+typedef struct operator operator;
+typedef struct InstructionSet InstructionSet;
+typedef struct command command;
+
+struct listItem {
+    void *data;
+    listItem *next;
+    listItem *prev;
+};
+
+struct LinkedList {
+    listItem *first;
+    listItem *last;
+    int elements;
+};
+
+struct hashMapItem {
+    char *key;
+    void *data;
+    void (*freeRoutine)(void*);
+};
+
+struct HashMap {
+    LinkedList *items;
+    int maxElements;
+    int elementCount;
+};
+
+struct command { 
+    char *(*commandPointer)(instruction*, openFile*); 
+};
+
+union variableData { /* UNIONISE, MY CHILDREN! RISE AGAINST THE EMPLOYERS WHO TREAT YOU AS WAGE SLAVES! BECOME A UNION! FIGHT FOR WORKPLACE RIGHTS! GET YO 401(k)!!! */
+    double num;
+    char *str;
+    int bool;
+    void *etc;
+}; 
+
+struct variable {
     int type;
-    union { // UNIONIZE, MY CHILDREN! RISE AGAINST THE EMPLOYERS WHO TREAT YOU AS WAGE SLAVES! BECOME A UNION! FIGHT FOR WORKPLACE RIGHTS! GET YO 401(k)!!!
-        double num;
-        char *str;
-        int bool;
-    }; 
-} variable;
+    union variableData data;
+};
 
-typedef struct {
+struct instruction {
     char *operation;
     int argumentCount;
     char **arguments;
     char *prefix;
-} instruction;
+};
 
-typedef struct {
-    char *name;
-    int location;
-} label;
-
-typedef struct {
-    char *name;
-    variable *variables;
-    int elements;
-} list; 
-
-typedef struct {
+struct openFile {
     char *path;
     instruction **instructions;
-    variable *variables;
-    label *labels;
-    list *lists; // its a struct inside a struct inside a struct. yum
+    HashMap variables;
+    HashMap labels;
+    HashMap lists; 
     int instructionCount;
-    int variableCount;
-    int labelCount;
-    int listCount;
     int programCounter;
-} openFile;
+};
 
-typedef struct {
+struct operator {
     char *name;
     char *prefix;
-    void (*functionPointer)(openFile*); // guys i think this points or smth idk
+    void (*functionPointer)(void*); /* guys i think this points or smth idk */ 
     int minArgs;
-} operator;
+};
 
-typedef struct {
+struct InstructionSet {
     operator *set;
     char **prefixes;
     int count;
     int prefixCount;
-} InstructionSet;
+};
 
 InstructionSet ValidInstructions;
+HashMap ValidCommands;
 
-#define DEBUG_PRINT(string) DEBUG_PRINTF("%s", string) // macro abuse ALSO at its finest hour
+/* preprocessor fuckery so that i can debug exactly where all my damn allocations are   */
+/* set the debugging define to 0 if you don't want the cycle loss with this             */
+#if ALLOC_DEBUGGING == 1
 
-void executeFile(openFile *current, int doFree); // quick forward decl
+FILE *allocatorLog;
+int allocationCounter = 0;
+
+void *mallocate(size_t size) {
+    allocationCounter += 1;
+    fprintf(allocatorLog, "allocated %d bytes (allocation #%d)\r\n", (int)size, allocationCounter);
+    DEBUG_PRINTF("allocated %d bytes (allocation #%d)\r\n", (int)size, allocationCounter);
+    return malloc(size);
+}
+
+void *callocate(size_t count, size_t size) {
+    allocationCounter += 1;
+    fprintf(allocatorLog, "cleared & allocated %d bytes(allocation #%d)\r\n", (int)size * (int)count, allocationCounter);
+    DEBUG_PRINTF("cleared & allocated %d bytes(allocation #%d)\r\n", (int)size * (int)count, allocationCounter);
+    return calloc(count, size);
+}
+
+void *reallocate(void *block, size_t size) {
+    allocationCounter += 1;
+    fprintf(allocatorLog, "reallocated %d bytes(allocation #%d)\r\n", (int)size, allocationCounter);
+    DEBUG_PRINTF("reallocated %d bytes(allocation #%d)\r\n", (int)size, allocationCounter);
+    return realloc(block, size);
+}
+
+#else 
+
+#define mallocate(size) malloc(size)
+#define callocate(count, size) calloc(count, size)
+#define reallocate(block, size) realloc(block, size)
+
+#endif
+
+void executeFile(openFile *current, int doFree); /* forward */
+void setUpCommands();
+void beginCommandLine(char *entryMsg, openFile *passed);
+void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*));
+
+void dummy() { float f=0,*fp; fp=&f; printf("%f",*fp); } /* only needed for retarded systems like turbo c to trick it into bringing in float libs */
+
+void toggleDebugMode() {
+    debugMode = !debugMode;
+    if (debugMode) { puts("debug mode enabled"); }
+    else { puts("debug mode disabled"); }
+}
 
 char *strdup(const char *string) {
     int len = strlen(string) + 1;
-    char *final = (char *)malloc(len * sizeof(char));
+    char *final = (char *)mallocate(len * sizeof(char));
     if (!final) return NULL;
     memcpy(final, string, len);
     return final;
 }
 
+unsigned long hash(unsigned char *str) { /* wonderful lil algorithm called djb2. written by someone much smarter than me. used in programming for ages. no fuckign clue how it works. */
+    unsigned long hashbrick = 5381; int c;
+    while ((c = *str++)) hashbrick = ((hashbrick << 5) + hashbrick) + c; /* hash * 33 + c */
+    return hashbrick;
+}
+
 void freeAndPrint(char *allocated) { printf("%s", allocated); free(allocated); }
 
 void freeInstruction(instruction *inst) {
+    int i;
     if (inst == NULL) return;
+    DEBUG_PRINTF("freeing %s instruction\n", inst->operation);
     free(inst->operation);
-    for (int i = 0; i < inst->argumentCount; i++) {
-        free(inst->arguments[i]);
+    for (i = 0; i < inst->argumentCount; i++) {
+        DEBUG_PRINTF("freeing %s arg\n", inst->arguments[i]); free(inst->arguments[i]);
     }
     free(inst->arguments);
     if (inst->prefix != NULL) free(inst->prefix);
     free(inst);
 }
 
-void freeVariable(variable var) { if (var.name) { free(var.name); } if (var.type == STR && var.str) { free(var.str); }}
-void freeLabel(label l) { free(l.name); }
-void freeList(list lis) { free(lis.name); for (int i = 0; i < lis.elements; i++) { freeVariable(lis.variables[i]); } free(lis.variables); lis.variables = NULL; }
-void freeOperator(operator op) { if (op.name != NULL) { free(op.name); } if (op.prefix != NULL) { free(op.prefix); }}
-void freeInstructionSet(InstructionSet isa) { if (isa.set != NULL) { for (int i = 0; i < isa.count; i++) { freeOperator(isa.set[i]); } free(isa.set); } if (isa.prefixes != NULL) { for (int i = 0; i < isa.prefixCount; i++) { free(isa.prefixes[i]); } free(isa.prefixes); }}
+void freeVariable(variable *var) { if (var->type == STR && var->data.str) { free(var->data.str); } free(var); }
+void freeLinkedList(LinkedList *lis) { listItem *current = lis->first; while (current != NULL) { listItem *next = current->next; free(current); current = next; }}
+void freeList(LinkedList *lis) { int i; listItem *current = lis->first; for (i = 0; i < lis->elements; i++) { listItem *next = current->next; freeVariable((variable *)current->data); current = next; } freeLinkedList(lis); free(lis); }
+void freeOperator(operator op) { if (op.name != NULL) { DEBUG_PRINTF("freeing %s operator\n", op.name); free(op.name); } if (op.prefix != NULL) { DEBUG_PRINTF("freeing %s prefix\n", op.prefix); free(op.prefix); }}
+void freeInstructionSet(InstructionSet isa) { int i; if (isa.set != NULL) { for (i = 0; i < isa.count; i++) { freeOperator(isa.set[i]); } free(isa.set); } if (isa.prefixes != NULL) { for (i = 0; i < isa.prefixCount; i++) { free(isa.prefixes[i]); } free(isa.prefixes); }}
+void freeHashMap(HashMap map) {
+    int i;
+    if (map.items == NULL) return;
+    for (i = 0; i < map.maxElements; i++) {
+        listItem *current = map.items[i].first;
+        if (current == NULL) continue;
+        while (current != NULL) {
+            hashMapItem *item = (hashMapItem *)current->data;
+            DEBUG_PRINTF("freeing %s key\n", item->key);
+            free(item->key); 
+            if (item->freeRoutine) item->freeRoutine(item->data); 
+            free(item);
+            current = current->next;
+        }
+        freeLinkedList(&map.items[i]); 
+    }
+    free(map.items);
+}
 void freeFile(openFile file) {
-    if (file.instructions != NULL) { for (int i = 0; i < file.instructionCount; i++) { freeInstruction(file.instructions[i]); } free(file.instructions); }
-    if (file.variables != NULL) { for (int i = 0; i < file.variableCount; i++) { freeVariable(file.variables[i]); } free(file.variables); }
-    if (file.labels != NULL) { for (int i = 0; i < file.labelCount; i++) { freeLabel(file.labels[i]); } free(file.labels); }
-    if (file.lists != NULL) { for (int i = 0; i < file.listCount; i++) { freeList(file.lists[i]); } free(file.lists); }
+    int i;
+    DEBUG_PRINT("freeing instructions\n");
+    if (file.instructions != NULL) { for (i = 0; i < file.instructionCount; i++) { freeInstruction(file.instructions[i]); } free(file.instructions); }
+    DEBUG_PRINT("freeing vars\n");
+    freeHashMap(file.variables);
+    DEBUG_PRINT("freeing labels\n");
+    freeHashMap(file.labels);
+    DEBUG_PRINT("freeing lists\n");
+    freeHashMap(file.lists);
     if (file.path != NULL) { free(file.path); }
 }
 
-char *stripSemicolon(char *input) { char *string = strdup(input); if (strlen(input) == 0) { return string; } int position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
-char *lowerize(char *input) { char *string = strdup(input); if (strlen(input) == 0) { return string; } int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
-void lowerizeInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }} // mutates the string to save a couple of cycles
-void stripSemicolonInPlace(char *string) { int len = (int)strlen(string); for (int i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
-
-int findNumberArgs(char *instruction, InstructionSet isa) { for (int i = 0; i < isa.count; i++) { if (strcmp(isa.set[i].name, instruction) == 0) { return isa.set[i].minArgs; }} return -1; }
-
-void cry(char sob[]) { printf("%s", sob); exit((int)2384708919); } // this is how i feel trying to debug this
-
-char digitToChar(unsigned int number) {
-    if (number > 9) return '\0';
-    return number + 48;
+void cleanFile(openFile *file) { /* cleans a file for re-execution */
+    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels);
+    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
 }
 
-int charToDigit(unsigned char character) { 
-    if (character > 57 || character < 48) return '\0';
-    return character - 48; 
+char *stripSemicolon(char *input) { int position; char *string = strdup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(char *input) { int i, len; char *string = strdup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
+void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }}
+void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
+
+int findNumberArgs(char *instruction, InstructionSet isa) { int i; for (i = 0; i < isa.count; i++) { if (strcmp(isa.set[i].name, instruction) == 0) { return isa.set[i].minArgs; }} return -1; }
+
+void cry(char *msg) { puts(msg); exit(2847172); }
+void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
+    if (fatal) {
+        printf("Fatal error: %s of code %d\nPress 'enter' to quit...\n", errorMsg, errCode);
+        freeFile(*file);
+        freeInstructionSet(ValidInstructions);
+        getchar();
+        exit(errCode); /* theres no real errcodes but we're gonna pretend we do */
+    } else {
+        char string[512];
+        sprintf(string, "A non-fatal error %d (%s) has occurred at line %d. \nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg, file->programCounter);
+        cleanFile(file);
+        beginCommandLine(string, file);
+    }
 }
 
 int trueOrFalse(char *string) {
+    char *check = lowerize(string); int value = 0;
     char *check = lowerize(string); int value = 0;
     if (strcmp(check, "true") == 0) { value = 1; }
     else if (strcmp(check, "false") == 0) { value = 0; }
@@ -185,24 +275,47 @@ int trueOrFalse(char *string) {
     return value;
 }
 
-void set_variable_value(variable *var, int type, char *value, double num, int bool) { // too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3
-    if (var->type == STR) free(var->str); 
-    var->str = NULL;
-    if (type == NUM) { var->num = num; }
-    else if (type == BOOL) { var->bool = bool; }
+void set_variable_value(variable *var, int type, char *value, double num, int bool) { /* too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3 */
+    if (var->type == STR) free(var->data.str); 
+    var->data.str = NULL;
+    if (type == NUM) { var->data.num = num; }
+    else if (type == BOOL) { var->data.bool = bool; }
     else if (type == STR) {
         if (!value) cry("No value passed in!\n");
-        var->str = strdup(value);
-        if (var->str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
+        var->data.str = strdup(value);
+        if (var->data.str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
     }
     var->type = type;
-    DEBUG_PRINTF("\nvariable %s now has value %s, %lf, %d\n", var->name, value, num, bool);
+    DEBUG_PRINTF("\nvariable now has value %s, %f, %d\n", value, (float)num, bool);
+}
+
+listItem *traverseList(int desiredIndex, int currentIndex, listItem *pointOfList) {
+    listItem *currentPointer = pointOfList; 
+    if (currentIndex == desiredIndex) return currentPointer; /* bail early */
+    while (currentIndex != desiredIndex && currentPointer != NULL) {
+        currentPointer = (currentIndex < desiredIndex) ? currentPointer->next : currentPointer->prev;
+        currentIndex += (currentIndex < desiredIndex) ? 1 : -1;
+    }
+    return currentPointer;
+}
+
+void deleteItem(listItem *target) { /* you GOTTA free the data inside it first, mind you */
+    listItem *nextTemp = target->next, *prevTemp = target->prev;
+    free(target); 
+    if (prevTemp != NULL) prevTemp->next = nextTemp;
+    if (nextTemp != NULL) nextTemp->prev = prevTemp;
+} 
+
+void insertItem(listItem *new, listItem *prev, listItem *next) { /* sandwiches it betwixt two elements */
+    if (prev != NULL) prev->next = new;
+    if (next != NULL) next->prev = new;
+    new->prev = prev; new->next = next;
 }
 
 instruction *add_instruction(char *inst, char *arguments[], char *prefix, int args) {
-    char *ins = stripSemicolon(inst);    
-    instruction *instruct = (instruction *)malloc(sizeof(instruction));
-    if (args >= 1) { instruct->arguments = (char **)malloc(sizeof(char*) * args); for (int i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
+    int i; char *ins = stripSemicolon(inst);
+    instruction *instruct = (instruction *)mallocate(sizeof(instruction));
+    if (args >= 1) { instruct->arguments = (char **)mallocate(sizeof(char*) * args); for (i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
     else { instruct->arguments = NULL; }
     instruct->operation = strdup(ins); instruct->argumentCount = args;
     if (prefix != NULL) { instruct->prefix = strdup(prefix); }
@@ -212,71 +325,45 @@ instruction *add_instruction(char *inst, char *arguments[], char *prefix, int ar
     return instruct;
 }
 
-variable create_variable(char *name) {
-    variable var = { .name = strdup(name) };
-    DEBUG_PRINTF("created variable %s\n", var.name);
-    return var;
-}
-
-variable create_variable_with_value(char *name, int type, char *value, double num, int bool) {
-    variable var = { .name = strdup(name) };
-    switch (type) {
-        case STR: set_variable_value(&var, type, value, 0.0, 0); break;
-        case NUM: set_variable_value(&var, type, NULL, num, 0); break;
-        case BOOL: set_variable_value(&var, type, NULL, 0.0, bool); break;
-        default: cry("Invalid type!\n");
-    }
-    DEBUG_PRINTF("created variable %s\n", var.name);
-    return var;
-}
-
-label create_label(char *name, int location) {
-    label label = { .name = stripSemicolon(name), .location = location };
-    DEBUG_PRINTF("\ncreated label %s on line %d\n", name, location);
-    return label;
-}
-
-list *create_list(char *name) {
-    list *new = (list *)malloc(sizeof(list));
-    new->variables = (variable *)malloc(sizeof(variable));
-    memset(new->variables, 0, sizeof(variable));
-    new->name = strdup(name);
-    new->elements = 0;
-    DEBUG_PRINTF("\ncreated list %s\n", name);
-    return new;
-}
-
-operator create_operator(char *name, char *prefix, void (*functionPointer)(openFile*), int minimumArguments) {
-    operator op = { .name = strdup(name), .prefix = (prefix != NULL) ? strdup(prefix) : NULL, .functionPointer = functionPointer, .minArgs = minimumArguments};
+operator create_operator(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { /* CONSTRUCTORS!? OBJECTS!? IN MY C CODE!? WHAT THE FUCK IS THIS, JAVA!? */
+    operator op;
+    op.name = strdup(name);
+    op.prefix = (prefix != NULL) ? strdup(prefix) : NULL; 
+    op.functionPointer = functionPointer; 
+    op.minArgs = minimumArguments;
     return op;
 }
 
-list *addListToLists(list **lists, char *name, int *listCount) {
-    *lists = (list *)realloc(*lists, sizeof(list) * (*listCount + 1));
-    if (*lists == NULL) cry("heyo, lists failed to allocate here.");
-    list *created = create_list(name);
-    (*lists)[*listCount] = *created;
-    free(created);
-    *listCount += 1;
-    return (lists)[*listCount];
+HashMap create_hashmap(int maxElements) { /* genuinely one of the only times java might be good for shit ngl */
+    HashMap new;
+    new.maxElements = maxElements;
+    new.elementCount = 0;
+    new.items = (LinkedList *)callocate(maxElements, sizeof(LinkedList));
+    return new;
 }
 
 void addOperator(operator *op, InstructionSet *isa) {
-    isa->set = (operator *)realloc(isa->set, (isa->count + 1) * sizeof(operator));
+    isa->set = (operator *)reallocate(isa->set, (isa->count + 1) * sizeof(operator));
     isa->set[isa->count] = *op;
     isa->count += 1;
 }
 
+void addOperatorSet(operator *ops, InstructionSet *isa, int count) {
+    isa->set = (operator *)reallocate(isa->set, (isa->count + count) * sizeof(operator));
+    memcpy(isa->set + isa->count, ops, count * sizeof(operator));
+    isa->count += count;
+}
+
 void addPrefix(char *prefix, InstructionSet *isa) {
-    isa->prefixes = (char **)realloc(isa->prefixes, (isa->prefixCount + 1) * sizeof(char *));
+    isa->prefixes = (char **)reallocate(isa->prefixes, (isa->prefixCount + 1) * sizeof(char *));
     isa->prefixes[isa->prefixCount] = strdup(prefix);
     isa->prefixCount += 1;
 }
 
 void varcpy(variable *dest, variable *src) { 
-    if (src->type == NUM) set_variable_value(dest, src->type, NULL, src->num, 0); 
-    if (src->type == STR) set_variable_value(dest, src->type, src->str, 0.0, 0); 
-    if (src->type == BOOL) set_variable_value(dest, src->type, NULL, 0.0, src->bool); 
+    if (src->type == NUM) set_variable_value(dest, src->type, NULL, src->data.num, 0); 
+    if (src->type == STR) set_variable_value(dest, src->type, src->data.str, 0.0, 0); 
+    if (src->type == BOOL) set_variable_value(dest, src->type, NULL, 0.0, src->data.bool); 
 }
 
 int grabType(char *input) {
@@ -288,169 +375,147 @@ int grabType(char *input) {
     else { free(type); return -1; }
 }
 
-void appendElement(list *li, variable var) {
-    li->variables = (variable *)realloc(li->variables, (sizeof(variable) * (li->elements + 1))); 
-    if (li->variables == NULL) cry("SHIT, A MALLOC FAILED");
-    memset(&li->variables[li->elements], 0, sizeof(variable));
-    varcpy(&li->variables[li->elements], &var);
-    li->elements += 1;
+void appendElementToList(LinkedList *li, variable var) {
+    listItem *new = (listItem *)mallocate(sizeof(listItem));
+    new->data = (variable *)callocate(1, sizeof(variable));
+    new->prev = NULL; new->next = NULL;
+    varcpy((variable *)new->data, &var);
+    if (li->elements == 0) { li->first = new; }
+    else insertItem(new, li->last, NULL);
+    li->last = new; li->elements += 1;
 }
 
-void removeElement(list *li, int element) {
-    DEBUG_PRINTF("%d %d\n", element, li->elements);
-    freeVariable(li->variables[element]); // free the specified element in the array
+void removeElementFromList(LinkedList *li, int element) {
+    listItem *target;
+    if (element < 1) { 
+        target = li->first; 
+        if (li->first->next != NULL) { 
+            li->first = li->first->next; 
+            li->first->prev = NULL;
+        }
+    } 
+    else { target = traverseList(element - 1, 0, li->first); }
+    if (target == li->last && li->last != li->first) li->last = target->prev;
+    freeVariable((variable *)target->data);
     li->elements -= 1;
-    if (element != li->elements) { for (int i = element + 1; i < li->elements + 1; i++) { memcpy(&li->variables[i - 1], &li->variables[i], sizeof(variable)); }} 
-    li->variables = (variable *)realloc(li->variables, sizeof(variable) * (li->elements));
-    if (li->variables == NULL) cry("SHIT, A MALLOC FAILED");
+    deleteItem(target);
 }
 
 char *grabStringOfNumber(double num) {
-    char *buffer = (char *)malloc(50 * sizeof(char) + 1);
-    snprintf(buffer, 50, "%lf", num);
-    int len = strlen(buffer); int zeroes = 0;
-    for (int i = 1; i < 7; i++) { if (buffer[len - i] == '0') { zeroes++; buffer[len - i] = '\0'; } else break; } // yoink trailing zeroes
-    if (zeroes == 6) { buffer[len - 7] = '\0'; } // terminate it if it's just trailing zeroes
-    return buffer;
+    int i, len, zeroes = 0; char buffer[331], *final;
+    sprintf(buffer, "%f", (float)num); /* gatta love that unsafety hehehe... it'll be fine */ 
+    len = strlen(buffer);
+    for (i = 1; i < 7; i++) { if (buffer[len - i] == '0') { zeroes++; buffer[len - i] = '\0'; } else break; } /* yoink trailing zeroes */
+    if (zeroes == 6) { buffer[len - 7] = '\0'; } /* terminate it if it's just trailing zeroes */
+    final = (char *)mallocate(strlen(buffer) * sizeof(char) + 1);
+    strcpy(final, buffer);
+    return final;
 }
 
 size_t grabLengthOfNumber(double num) { char *temp = grabStringOfNumber(num); size_t len = strlen(temp); free(temp); return len; }
 
 size_t stringLenFromVar(variable var) {
-    if (var.type == STR) { return strlen(var.str); }
-    else if (var.type == BOOL) { return var.bool ? strlen("true") : strlen("false"); }
-    else if (var.type == NUM) { return grabLengthOfNumber(var.num); }
+    if (var.type == STR) { return strlen(var.data.str); }
+    else if (var.type == BOOL) { return var.data.bool ? strlen("true") : strlen("false"); }
+    else if (var.type == NUM) { return grabLengthOfNumber(var.data.num); }
     else { return 0; }
 }
 
 char *stringFromVar(variable var) {
-    if (var.type == STR) { return strdup(var.str); }
-    else if (var.type == BOOL) { return var.bool ? strdup("true") : strdup("false"); }
-    else if (var.type == NUM) { return grabStringOfNumber(var.num); }
+    if (var.type == STR) { return strdup(var.data.str); }
+    else if (var.type == BOOL) { return var.data.bool ? strdup("true") : strdup("false"); }
+    else if (var.type == NUM) { return grabStringOfNumber(var.data.num); }
     else { return NULL; }
 }
 
-char *formatList(list li) {
-    char *final;
-    size_t bytes = 3;
-    for (int i = 0; i < li.elements; i++) {
-        bytes += stringLenFromVar(li.variables[i]) + 2; 
-        if (li.variables[i].type == STR) { bytes += 2; } // quotes
-    }
-    final = (char *)malloc(bytes); if (final == NULL) cry("List Formatting failed!");
-    final[0] = '\0';
-
-    strcat(final, "[");
-    for (int i = 0; i < li.elements; i++) {
-        char *temp = stringFromVar(li.variables[i]);
-        if (temp) {
-            if (li.variables[i].type == STR) strcat(final, "\"");
-            strcat(final, temp);
-            if (li.variables[i].type == STR) strcat(final, "\"");
-            free(temp);
-            if (i + 1 != li.elements) strcat(final, ","); // make sure no trailing comma is left
+void changeHashMap(HashMap *map, int extensionCount) {
+    int i, newMax = map->maxElements + extensionCount; HashMap temp; 
+    if (extensionCount == 0 || map->maxElements + extensionCount < map->elementCount) return;
+    temp = create_hashmap(newMax);
+    for (i = 0; i < map->maxElements; i++) {
+        listItem *loc = map->items[i].first;
+        if (loc == NULL) { continue; } /* if there ain't a first element, there ain't no fuckin' data */
+        while (loc != NULL) {
+            hashMapItem *current = loc->data; listItem *next = loc->next;
+            loc->next = NULL; loc->prev = NULL;
+            addItemToMap(&temp, current->data, current->key, current->freeRoutine);
+            free(current->key); free(current);
+            free(loc); loc = next;
         }
     }
-    strcat(final, "]");
-    return final;
+    map->maxElements = newMax;
+    free(map->items);
+    map->items = temp.items; map->maxElements = newMax;
 }
 
-void unFormatList(list *li, char *string) {
-    int type; int start = 0;
-    while (1) { if (string[start] == '[') { break; } start += 1; }
-    for (int i = start; i < (int)strlen(string); i++) {
-        char c = string[i]; int length = 0;
-        if (c == ']') break;
-        if (c == '[' || c == ',') continue;
-        if (c == '"') { type = STR; continue; }
-        if (type != STR) { if (isdigit(c)) { type = NUM; } else { type = BOOL; }}
-
-        while ((c = string[i + length]) != ',' && (c = string[i + length]) != '"' && (c = string[i + length]) != '[' && (c = string[i + length]) != ']') { length += 1; DEBUG_PRINT(&c); }
-
-        char *value = (char *)calloc(length + 1, sizeof(char));
-        for (int j = 0; j < length; j++) { value[j] = string[i + j]; }
-        i += length; 
-        value[length] = '\0';
-        DEBUG_PRINT(value);
-
-        variable var; var.type = type;
-        if (type == NUM) { var.num = (double)atof(value); }
-        else if (type == STR) { var.str = value; }
-        else if (type == BOOL) { var.bool = trueOrFalse(value); }
-        appendElement(li, var); type = 0; free(value);
-    }
+void *searchHashMap(HashMap *map, char *key) {
+    unsigned long index = hash((unsigned char *)key) % map->maxElements;
+    listItem *current = map->items[index].first;
+    hashMapItem *check;
+    if (current == NULL) { DEBUG_PRINTF("aint shit here (%lu, %d)", hash((unsigned char *)key), (int)index); return NULL; }
+    check = (hashMapItem *)current->data;
+    while (strcmp(check->key, key)) {
+        if (current == NULL) return NULL; /* it's not gonna be there */
+        check = (hashMapItem *)current->data;
+        current = current->next;
+    } 
+    return check->data;
 }
 
-variable *findVar(variable **variableSet, int *count, char *name, int createIfNotFound) {
-    int location = 0; int found = 0;
-    for (int k = 0; k < *count; k++) {
-        if (strcmp((*variableSet)[k].name, name) == 0) { 
-            DEBUG_PRINTF("found variable %s at %d\n", (*variableSet)[k].name, k);
-            found = 1; break; 
-        }
-        location++;
+void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*)) {
+    unsigned long index = hash((unsigned char *)key) % map->maxElements;
+    listItem *prev, *dataLocation = map->items[index].first;
+    if (searchHashMap(map, key) != NULL) return; 
+    if (map->maxElements < map->elementCount + 1) {
+        changeHashMap(map, 10); /* 10 just to give some headroom */
+        addItemToMap(map, item, key, freeRoutine);
+        return;
     }
-
-    if (!found) { 
-        if (createIfNotFound) {
-            (*variableSet) = realloc(*variableSet, sizeof(variable) * (*count + 1));
-            (*variableSet)[*count] = create_variable(name); // placholdr
-            location = *count; (*count)++; found = 1;
-        }
+    while (dataLocation != NULL) { prev = dataLocation; dataLocation = dataLocation->next; } 
+    if (dataLocation == NULL) {
+        hashMapItem *newItem;
+        dataLocation = (listItem *)callocate(1, sizeof(listItem));
+        dataLocation->data = (hashMapItem *)mallocate(sizeof(hashMapItem));
+        newItem = (hashMapItem *)dataLocation->data;
+        newItem->data = item; newItem->key = strdup(key); newItem->freeRoutine = freeRoutine;
+        DEBUG_PRINTF("added item with key %s in index %lu\n", key, index);
     }
-    if (found) { return &(*variableSet)[location]; }
-    else return NULL;
+    if (map->items[index].first == NULL) { map->items[index].first = dataLocation; }
+    else { prev->next = dataLocation; }
+    map->elementCount += 1; 
 }
 
-label *findLabel(label *labelSet, int count, char name[]) {
-    int location = 0; int found = 0;
-    for (int k = 0; k < count; k++) { 
-        if (strcmp(labelSet[k].name, name) == 0) { 
-            DEBUG_PRINTF("found label %s at %d\n", labelSet[location].name, location);
-            found = 1; break; 
-        } 
-        location++; 
+void batchAddToMap(HashMap *map, void **items, char **keys, void (*freeRoutine)(void*), int itemCount) {
+    int i;
+    for (i = 0; i < itemCount; i++) {
+        addItemToMap(map, items[i], keys[i], freeRoutine);
     }
-    if (found) { return &(labelSet)[location]; }
-    else return NULL;
 }
-
-list *findList(list *listSet, int count, char name[]) {
-    int location = 0; int found = 0;
-    for (int k = 0; k < count; k++) { 
-        if (strcmp(listSet[k].name, name) == 0) { 
-            DEBUG_PRINTF("found list %s at %d\n", listSet[location].name, location);
-            found = 1; break; 
-        } 
-        location++; 
-    }
-    if (found) { return &(listSet)[location]; } 
-    else { return NULL; }
-} 
 
 void preprocessLabels(openFile *new) {
-    for (int i = 0; i < new->instructionCount; i++) {
+    int i;
+    new->labels = create_hashmap(new->labels.maxElements); 
+    for (i = 0; i < new->instructionCount; i++) {
         if (strcmp(new->instructions[i]->operation, "label") == 0) { 
-            if (findLabel(new->labels, new->labelCount, new->instructions[i]->arguments[0]) != NULL) { printf("That name (%s) has already been taken! Execution will continue; this label will be disregarded.\n", new->instructions[i]->arguments[0]); continue; }
-            new->labels = (label *)realloc(new->labels, sizeof(label) * (new->labelCount + 1)); 
-            new->labels[new->labelCount] = create_label(new->instructions[i]->arguments[0], i - 1); 
-            new->labelCount += 1;
+            int *location = (int *)mallocate(sizeof(int));
+            *location = i - 1;
+            addItemToMap(&new->labels, location, new->instructions[i]->arguments[0], free);
         }
     }
 }
 
 char *grabUserInput(const int maxSize) {
-    char *val = calloc(maxSize + 1, sizeof(char)); 
+    char *val = callocate(maxSize + 1, sizeof(char)); 
     if (!val) return NULL;
     if(!fgets(val, maxSize, stdin)) { free(val); return NULL; }
-    val[strcspn(val, "\n")] = '\0'; // compensate for the newline by fucking yeeting it out of existence
+    val[strcspn(val, "\n")] = '\0'; /* compensate for the newline by fucking yeeting it out of existence */
     DEBUG_PRINT(val);
     return val;
 }
 
 void strip(char *string, char character) {
-    int len = strlen(string);
-    for (int i = 0; i < len; i++) {
+    int i, len = strlen(string);
+    for (i = 0; i < len; i++) {
         if (string[i] == character) {
             memmove(string + i, string + 1 + i, len - i);
             len -= 1; i--;
@@ -458,209 +523,153 @@ void strip(char *string, char character) {
     }
 } 
 
-char *stringFromString(char *string, int *offset) { // created to reduce reliance on things like sscanf, because fuck you, i make my own stdlib
-    DEBUG_PRINTF("offset before: %d, ", *offset);
-    while (string[*offset] == ' ' || string[*offset] == '\n' || string[*offset] == '\r' || string[*offset] == '\0') { if (string[*offset] == '\0') { return NULL; } *offset += 1; } // my cs teacher was right. carriage returns are important. i shall now scream into the abyss
-    DEBUG_PRINTF("offset after: %d\n", *offset);
-    int len = 0;
-    while (string[*offset + len] != ' ' && string[*offset + len] != '\n' && string[*offset + len] != '\r' && string[*offset + len] != '\0') { len += 1; } // now repeat invertedly because yes
-    char *final = (char *)calloc(len + 1, sizeof(char)); if (final == NULL) cry("smth died i think, hence i shall now die\n");
-    memcpy(final, string + *offset, len);
-    final[len] = '\0'; *offset += len;
-    DEBUG_PRINT(final);
-    return final;
+int isWhitespace(char check) {
+    if (check == ' ' || check == '\t' || check == '\r' || check == '\n' || check == '\0') return 1;
+    return 0;
+}
+
+char **stringSlicer(char *string, int *elementCount) { /* strtok? what the fuck is that? sounds dangerous, no thanks */
+    int len = strlen(string), offset = 0, i, tokens = 0, currentToken = 0; char **arr = NULL;
+    while (isWhitespace(string[offset])) { if (string[offset] == '\0') { return NULL; } offset += 1; } /* skip all beginning whitespace, and bail if it's a blank line */
+    for (i = offset; i <= len; i++) {
+        if (isWhitespace(string[i])) tokens += 1; /* if there's whitespace, it must be the end of a token */
+        if (string[i] != '\0') { int prev = i; while (isWhitespace(string[i]) && i <= len) { i++; } if (prev != i) { i--; }} /* keep goin till we hit another real token, then rewind one back since i will increase agains */
+    }
+    if (!tokens) { DEBUG_PRINTF("\"%s\"\n", string); return NULL; }
+    arr = (char **)callocate(tokens, sizeof(char *));
+    DEBUG_PRINTF("token count: %d\n", tokens);
+    while (offset != len && currentToken < tokens) {
+        int tokenLen = 0;
+        for (i = offset; i < len; i++) { if (isWhitespace(string[i])) { offset += 1; } else {break;}}
+        for (i = offset; i < len; i++) { if (!isWhitespace(string[i])) { tokenLen += 1; } else {break;}}
+        DEBUG_PRINTF("allocating for token %d\n", currentToken);
+        arr[currentToken] = (char *)mallocate(tokenLen + 1);
+        memcpy(arr[currentToken], string + offset, tokenLen);
+        arr[currentToken][tokenLen] = '\0';
+        offset += tokenLen + 1;
+        DEBUG_PRINT(arr[currentToken]);
+        currentToken += 1;
+    }
+    *elementCount = tokens;
+    return arr;
 }
 
 instruction *parseInstructions(char *string, InstructionSet isa) {
-    int offset = 0; char **args = NULL; int argc = 0;
-    char *operation = stringFromString(string, &offset); lowerizeInPlace(operation); DEBUG_PRINT(operation); DEBUG_PRINTF("%d", (int)strlen(operation)); char *prefix = NULL;
-    while (strcmp(operation, "please") == 0 || operation == NULL) { free(operation); operation = stringFromString(string, &offset); lowerizeInPlace(operation); }
-    for (int i = 0; i < isa.prefixCount; i++) { if (strcmp(operation, isa.prefixes[i]) == 0) { prefix = strdup(operation); free(operation); operation = stringFromString(string, &offset); lowerizeInPlace(operation); }}
-    char *temp = stripSemicolon(operation); args = (char **)malloc(sizeof(char *)); DEBUG_PRINT(temp); DEBUG_PRINTF("\n\n%d\n\n", (int)strlen(temp));
-    if (strcmp(temp, operation) == 0) {
-        for (int i = offset; i < (int)strlen(string) + 1; i++) {
-            char *argTemp = stringFromString(string, &i); if (argTemp == NULL) { break; } stripSemicolonInPlace(argTemp);
-            if (strcmp(argTemp, "") == 0) { int len = strlen(args[argc - 1]); args[argc - 1] = (char *)realloc(args[argc - 1], len + 2); args[argc - 1][len] = ' '; args[argc - 1][len + 1] = '\0'; free(argTemp); break; }
-            args = realloc(args, sizeof(char *) * (argc + 1));
-            args[argc] = strdup(argTemp); argc++;
-            DEBUG_PRINTF("arg: %s\n", argTemp);
-            free(argTemp);
-        }
-    }
-    instruction *new = add_instruction(temp, args, prefix, argc);
-    if (argc >= 1) { for (int i = 0; i < argc; i++) { DEBUG_PRINTF("instruction %s has arg \"%s\"\n", temp, args[i]); free(args[i]); }}
-    free(operation); free(temp); free(args); if (prefix != NULL) { free(prefix); }
+    int i, argc = 0, index = 0, arrCount; 
+    char *operation, *prefix = NULL, **tokenized = stringSlicer(string, &arrCount); 
+    instruction *new; 
+    lowerizeInPlace(tokenized[index]); 
+    while (strcmp(tokenized[index], "please") == 0) { index += 1; lowerizeInPlace(tokenized[index]);  }
+    for (i = 0; i < isa.prefixCount; i++) { if (strcmp(tokenized[index], isa.prefixes[i]) == 0) { prefix = tokenized[index]; index += 1; lowerizeInPlace(tokenized[index]); break; }}
+    lowerizeInPlace(tokenized[index]); operation = tokenized[index]; index += 1;
+    argc = arrCount - index; 
+    new = add_instruction(operation, tokenized + index, prefix, argc);
+    if (argc >= 1) { for (i = 0; i < argc; i++) { DEBUG_PRINTF("instruction %s has arg \"%s\"\n", operation, tokenized[index + i]); }}
+    for (i = 0; i < arrCount; i++) { free(tokenized[i]); } free(tokenized); 
     return new;
 }
 
 char *unParseInstructions(instruction *inst) {
-    size_t size = 0; size += strlen(inst->operation) + 1; 
-    for (int i = 0; i < inst->argumentCount; i++) { size += strlen(inst->arguments[i]) + 1; }
-    if (inst->prefix != NULL) { size += strlen(inst->operation) + 1; }
-    size += 2; // nullterm and semicolon ofc
-    char *final = (char *)calloc(size, sizeof(char)); if (!final) return NULL;
-    strcat(final, inst->operation); if (inst->prefix != NULL) { strcat(final, inst->operation); }
-    for (int i = 0; i < inst->argumentCount; i++) {
-        strcat(final, " "); // space between items ofc
+    int i; size_t size = strlen(inst->operation) + 1; char *final;
+    for (i = 0; i < inst->argumentCount; i++) { size += strlen(inst->arguments[i]) + 1; }
+    if (inst->prefix != NULL) { size += strlen(inst->prefix) + 1; }
+    size += 2; /* nullterm and semicolon ofc */
+    final = (char *)callocate(size, sizeof(char)); if (!final) return NULL;
+    if (inst->prefix != NULL) { strcat(final, inst->prefix); strcat(final, " "); } 
+    strcat(final, inst->operation); 
+    for (i = 0; i < inst->argumentCount; i++) {
+        strcat(final, " "); /* space between items ofc */
         strcat(final, inst->arguments[i]);
     }
     strcat(final, ";\0");
     return final;
 }
 
-int readFileToAndIncludingChar(FILE* file, char character) { // verbose, much?
+int readFileToAndIncludingChar(FILE* file, char character) { /* verbose, much? */
     char currentChar = 0; int count = 0;
-    while (currentChar != character) { currentChar = (char)fgetc(file); if (!feof(file)) { count += 1; } else {break;} if (currentChar == '\n' || currentChar == '\r') { DEBUG_PRINT("\\n"); } else { DEBUG_PRINTF("%c", currentChar); }} // push the pointer forwards
-    return count;
-}
-
-int readFileUntilNotChar(FILE* file, char character) { // stroke, much?
-    char currentChar = 0; int count = 0;
-    while (currentChar == character || currentChar == 0) { currentChar = (char)fgetc(file); if (!feof(file)) { count += 1; } else {break;} if (currentChar == '\n' || currentChar == '\r') { DEBUG_PRINT("\\n"); } else { DEBUG_PRINTF("%c", currentChar); }} // cummers
+    while (currentChar != character) { 
+        currentChar = (char)fgetc(file); 
+        if (!feof(file)) { count += 1; } else {break;} 
+        if (currentChar == '\n' || currentChar == '\r') { DEBUG_PRINT("\\n"); } 
+        else { DEBUG_PRINTF("%c", currentChar); }} /* push the pointer forwards */
     return count;
 }
 
 openFile openSimasFile(const char path[]) {
+    int i;
     FILE *file = fopen(path, "rb");
+    openFile new;
+    memset(&new, 0, sizeof(openFile));
     openFile new;
     memset(&new, 0, sizeof(openFile));
 
     if (file == NULL) { printf("failed to find a simas file!\n"); return new; }
 
     new.path = strdup(path);
+    new.path = strdup(path);
 
     while (!feof(file)) {
+        int size = readFileToAndIncludingChar(file, ';'); char *buffer;
+        DEBUG_PRINTF("\n%d\n", size);
         DEBUG_PRINT("goin back for more\n"); 
-        int size = readFileToAndIncludingChar(file, ';'); DEBUG_PRINTF("\n%d\n", size);
         if (feof(file)) break;
 
         fseek(file, size * -1, SEEK_CUR);
-        char *buffer = (char *)calloc(size + 1, sizeof(char)); 
+        buffer = (char *)callocate(size + 1, sizeof(char)); 
         fread(buffer, sizeof(char), size, file);
         buffer[size] = '\0';
 
         if (strchr(buffer, '@') == NULL) {
-            new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
+            new.instructions = (instruction **)reallocate(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
             if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
             new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
+            if (strcmp(new.instructions[new.instructionCount]->operation, "label") == 0 && new.instructions[new.instructionCount]->prefix == NULL) new.labels.maxElements += 1;
             new.instructionCount += 1;
         }
         
         free(buffer);
     }
-    for (int i = 0; i < new.instructionCount; i++) { DEBUG_PRINTF("%d: %s\n", i, new.instructions[i]->operation); }
+    if (debugMode) { for (i = 0; i < new.instructionCount; i++) { DEBUG_PRINTF("%d: %s\n", i, new.instructions[i]->operation); }}
     fclose(file);
     return new;
 }
 
-void beginCommandLine(void) {
-    printf("CMAS (C Simple Assembly) Interpreter.\nWritten by tuvalutorture, Licensed under GNU GPLv3.\nUsing The SIMAS Programming Language, created by Turrnut.\nGitHub repo: https://github.com/tuvalutorture/simas \nType !help for a list of commands.\n\n");
+void beginCommandLine(char *entryMsg, openFile *passed) {
+    puts(entryMsg);
 
-    openFile new;
-    memset(&new, 0, sizeof(openFile));
-    new.path = NULL;
+    if (!ValidCommands.items) setUpCommands();
 
     while (1) {
+        char *value, *temp; instruction *inst;
         printf("$ ");
-        char *value = grabUserInput(256);
+        value = grabUserInput(256);
         if (!value) { cry("**FATAL ERROR**:\nUnable to allocate memory!\n"); }
-        char *temp = stripSemicolon(value); strip(temp, ' ');
-        if (strcmp(temp, "") == 0) {free(value); free(temp); continue;}
+        temp = stripSemicolon(value); strip(temp, ' ');
+        if (strcmp(temp, "") == 0) {free(value); free(temp); continue;} /* blank check */
         free(temp);
-        instruction *inst = parseInstructions(value, ValidInstructions);
-        if (strchr(inst->operation, '!')) {
-            if (strcmp(inst->operation, "!quit") == 0) { freeInstruction(inst); free(value); break; }
-            else if (strcmp(inst->operation, "!run") == 0) { 
-                if (new.instructionCount) {
-                    executeFile(&new, 0); 
-                    if (new.variables != NULL) { for (int i = 0; i < new.variableCount; i++) { freeVariable(new.variables[i]); } free(new.variables); }
-                    if (new.labels != NULL) { for (int i = 0; i < new.labelCount; i++) { freeLabel(new.labels[i]); } free(new.labels); }
-                    if (new.lists != NULL) { for (int i = 0; i < new.listCount; i++) { freeList(new.lists[i]); } free(new.lists); }
-                    new.labels = NULL; new.lists = NULL; new.variables = NULL; new.labelCount = 0; new.variableCount = 0; new.listCount = 0; freeInstruction(inst); free(value); continue;
-                } else { printf("no instructions to execute\n"); }
-            }
-            else if (strcmp(inst->operation, "!clear") == 0) { freeFile(new); memset(&new, 0, sizeof(openFile)); }
-            else if (strcmp(inst->operation, "!load") == 0) { 
-                if (inst->argumentCount) {
-                    freeFile(new);
-                    new = openSimasFile(inst->arguments[0]);
-                    if (new.path) { printf("loaded successfully\n"); }
-                } else printf("you need to specify a file\n");
-            }
-            else if (strcmp(inst->operation, "!fuck") == 0) { printf("no thanks\n"); }
-            else if (strcmp(inst->operation, "!save") == 0) { 
-                if (inst->argumentCount) {
-                    FILE* file = fopen(inst->arguments[0], "wb");
-                    if (file) {
-                        for (int i = 0; i < new.instructionCount; i++) {
-                            char *string = unParseInstructions(new.instructions[i]);
-                            fwrite(string, sizeof(char), strlen(string), file);
-                            free(string); fputc('\n', file); 
-                        }
-                        fclose(file);
-                        printf("successfully saved to %s.\n", inst->arguments[0]);
-                    } else printf("unable to open file\n");
-                } else printf("you need to specify a file\n");
-            }
-            else if (strcmp(inst->operation, "!dump") == 0) { 
-                for (int i = 0; i < new.instructionCount; i++) {
-                    char *string = unParseInstructions(new.instructions[i]);
-                    printf("%d: %s\n", i + 1, string); free(string);
+        inst = parseInstructions(value, ValidInstructions);
+        if (inst->operation[0] == '!') {
+            command *cmd = ((command *)searchHashMap(&ValidCommands, inst->operation));
+            if (cmd != NULL) {
+                char *ret = cmd->commandPointer(inst, passed);
+                if (ret == NULL) {
+                    freeInstruction(inst);
+                    free(value);
+                    goto exit; /* chat is this BASIC? */
                 }
+                printf("%s", ret);
+            } else { 
+                printf("invalid command\n"); 
             }
-            else if (strcmp(inst->operation, "!edit") == 0) {
-                if (inst->argumentCount) {
-                    if (atoi(inst->arguments[0]) <= new.instructionCount && new.instructionCount && (atoi(inst->arguments[0]) - 1) >= 0) {
-                        char *old = unParseInstructions(new.instructions[atoi(inst->arguments[0]) - 1]);
-                        printf("Old instruction: %s\n", old); free(old);
-                        printf("Enter new instruction: ");
-                        char *out = grabUserInput(256);
-                        char *temporary = stripSemicolon(value); strip(temporary, ' ');
-                        instruction *instruct = parseInstructions(out, ValidInstructions);
-                        if (strcmp(temporary, "") != 0 && strchr(out, ';') && instruct->argumentCount >= findNumberArgs(instruct->operation, ValidInstructions)) { 
-                            freeInstruction(new.instructions[atoi(inst->arguments[0]) - 1]);
-                            new.instructions[atoi(inst->arguments[0]) - 1] = add_instruction(instruct->operation, instruct->arguments, instruct->prefix, instruct->argumentCount);
-                        } else if (strchr(out, ';') == NULL) {
-                            printf("code must end with a semicolon\n");
-                        } else if (instruct->argumentCount < findNumberArgs(instruct->operation, ValidInstructions)) {
-                            printf("too little arguments for instruction\n");
-                        }
-                        freeInstruction(instruct); free(temporary); free(out);
-                    }
-
-                    else if (!new.instructionCount) printf("no instructions\n");
-                    else if (atoi(inst->arguments[0]) >= new.instructionCount) printf("invalid index\n");
-                }
-                else printf("you need to specify an index\n");
-            }
-            else if (strcmp(inst->operation, "!freak") == 0 || strcmp(inst->operation, "!korn") == 0) {
-                if (inst->argumentCount && atoi(inst->arguments[0]) > 0) {
-                    printf("Boom-da-da-mmm-dum-na-ee-ma\n"); for (int i = 0; i < atoi(inst->arguments[0]); i++) { printf("Da-boom-da-da-mmm-dum-na-ee-ma\n"); } printf("\n\n**GO!**\n\n\n");
-                } printf("So fight, something on the ming-a-ooh\nFight, some things they fight\nSo, something on the ming-a-ooh\nFight, some things they fight\nFight, something off the hee-a-hoo\nNo, some things they fight\nFight, something on the ming-a-hoo\nFight, some things they fight\n");
-            }
-            else if (strcmp(inst->operation, "!help") == 0) {
-                printf(
-                    "CMAS Command List:\n"
-                    "!quit: Quits the CMAS command line.\n"
-                    "!clear: Resets the current program.\n"
-                    "!edit <index>: Edit the instruction at an index, starting from 1.\n"
-                    "!dump: Dumps the current program to terminal.\n"
-                    "!load <filename>: Loads a SIMAS file.\n"
-                    "!save <filename>: Saves the current SIMAS program to disk.\n"
-                    "!run: Executes the current SIMAS program.\n"
-                    "!syntax: Walks you through the basic syntax of SIMAS.\n"
-                    "Please read the README.md for a list of all instructions and their operators.\n"
-                );
-            }
-            else { printf("invalid command\n"); }
         } else if (findNumberArgs(inst->operation, ValidInstructions) == -1 && strchr(inst->operation, '@') == NULL) {
             printf("invalid instruction\n"); freeInstruction(inst); free(value); continue;
         } else {
             if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst->operation, ValidInstructions)) {
-                new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
-                if (new.instructions == NULL) { printf("**FATAL ERROR**:\nReallocation failed!\n"); free(value); break; }
-                new.instructions[new.instructionCount] = add_instruction(inst->operation, inst->arguments, inst->prefix, inst->argumentCount);
-                new.instructionCount += 1;
+                passed->instructions = (instruction **)reallocate(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
+                if (passed->instructions == NULL) { printf("**FATAL ERROR**:\nReallocation failed!\n"); free(value); break; }
+                passed->instructions[passed->instructionCount] = add_instruction(inst->operation, inst->arguments, inst->prefix, inst->argumentCount);
+                passed->instructionCount += 1;
+                if (strcmp(inst->operation, "label") == 0 && inst->prefix == NULL) passed->labels.maxElements += 1;
                 printf("ok\n");
             } else if (inst->argumentCount < findNumberArgs(inst->operation, ValidInstructions)) {
                 printf("too little arguments for instruction\n");
@@ -673,14 +682,19 @@ void beginCommandLine(void) {
         free(value);
     }
 
-    freeFile(new);
+    exit: /* yes gotos are shit. no i can't double-break from a loop. */
+    
+    freeHashMap(ValidCommands);
+    freeFile(*passed);
+    freeInstructionSet(ValidInstructions);
+
     exit(0);
 }
 
 void convertLiteralNewLineToActualNewLine(char *string) {
-    int sizeOf = strlen(string);
-    for (int i = 1; i < sizeOf; i++) { 
-        if (string[i] == 'n' && string[i - 1] == '\\') { 
+    int i, sizeOf = strlen(string);
+    for (i = 1; i < sizeOf; i++) { 
+        if ((string[i] == 'n' || string[i] == 'r')&& string[i - 1] == '\\') { 
             string[i - 1] = '\n';
             memcpy(string + i, string + 1 + i, sizeOf - i);
             i -= 1; 
@@ -689,20 +703,20 @@ void convertLiteralNewLineToActualNewLine(char *string) {
 }
 
 char *joinStringsSentence(char **strings, int stringCount, int offset) {
-    char *finalString = NULL; int sizeOf = 0;
+    char *finalString = NULL; int i, sizeOf = 0;
     if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
-    for (int i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
-    finalString = (char *)calloc(sizeOf + 1, sizeof(char)); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
-    for (int i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} // fuck yo optimization
+    for (i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
+    finalString = (char *)callocate(sizeOf + 1, sizeof(char)); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
+    for (i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} /* fuck yo optimization */
     convertLiteralNewLineToActualNewLine(finalString);
     return finalString;
 }
 
 int checkVarTruthiness(variable *var) {
     switch (var->type) {
-        case NUM: if (var->num != 0.0) { return 1; } else return 0;
-        case BOOL: if (var->bool != 0) { return 1; } else return 0;
-        case STR: if (var->str != NULL) { return trueOrFalse(var->str); } else return 0;
+        case NUM: if (var->data.num != 0.0) { return 1; } else return 0;
+        case BOOL: if (var->data.bool != 0) { return 1; } else return 0;
+        case STR: if (var->data.str != NULL) { return trueOrFalse(var->data.str); } else return 0;
         default: return 0;
     }
 }
@@ -712,22 +726,22 @@ void convert(variable *var, int type) {
     if (var->type != type) {
         if (var->type == NUM) {
             if (type == BOOL) {
-                if (var->num != 0.0) { var->bool = 1; }
-                else { var->bool = 0; }
+                if (var->data.num != 0.0) { var->data.bool = 1; }
+                else { var->data.bool = 0; }
             } else if (type == STR) {
-                var->str = grabStringOfNumber(var->num);
+                var->data.str = grabStringOfNumber(var->data.num);
             }
         } else if (var->type == BOOL) {
-            int truth = var->bool;
-            if (type == NUM) { var->num = (double)truth; }
+            int truth = var->data.bool;
+            if (type == NUM) { var->data.num = (double)truth; }
             else if (type == STR) {
-                if (truth) var->str = strdup("true");
-                if (!truth) var->str = strdup("false");
+                if (truth) var->data.str = strdup("true");
+                if (!truth) var->data.str = strdup("false");
             }
         } else if (var->type == STR) {
-            char *temp = strdup(var->str); if (var->str != NULL) { free(var->str); }
-            if (type == BOOL) { var->bool = trueOrFalse(temp); }
-            else if (type == NUM) { var->num = (double)atof(temp); }
+            char *temp = strdup(var->data.str); if (var->data.str != NULL) { free(var->data.str); }
+            if (type == BOOL) { var->data.bool = trueOrFalse(temp); }
+            else if (type == NUM) { var->data.num = (double)atof(temp); }
             free(temp);
         }
         var->type = type;
@@ -738,20 +752,19 @@ void convert(variable *var, int type) {
 
 int areTwoVarsEqual(variable *var1, variable *var2) {
     if (var1->type != var2->type) { return 0; }
-    if (var1->type == STR && strcmp(var1->str, var2->str) == 0) { return 1; }
-    else if (var1->type == NUM && var1->num == var2->num) { return 1; }
-    else if (var1->type == BOOL && var1->bool == var2->bool) { return 1; }
+    if (var1->type == STR && strcmp(var1->data.str, var2->data.str) == 0) { return 1; }
+    else if (var1->type == NUM && var1->data.num == var2->data.num) { return 1; }
+    else if (var1->type == BOOL && var1->data.bool == var2->data.bool) { return 1; }
     return 0;
 }
 
 char *readFile(char path[]) {
-    FILE *file = fopen(path, "r");
+    FILE *file = fopen(path, "r"); char *contents = NULL; long length;
     if (file == NULL) cry("cannot open le file!");
-    char *contents = NULL; 
     fseek(file, 0, SEEK_END);
-    long length = ftell(file);
+    length = ftell(file);
     rewind(file); 
-    contents = (char *)calloc(length + 1, sizeof(char));
+    contents = (char *)callocate(length + 1, sizeof(char));
     fread(contents, 1, length, file);
     contents[length] = '\0';
     fclose(file);
@@ -770,7 +783,7 @@ void freeAndWrite(char *path, char *value) { writeFile(path, value); free(value)
 
 void setVar(variable *var, int type, char* value, double num, int bool) {
     char *val = NULL;
-    if (type == IN) { // let the user type whatever bullshit is on their minds
+    if (type == IN) { /* let the user type whatever bullshit is on their minds */
         type = STR; val = grabUserInput(100);
     } else if (type == STR) { 
         val = strdup(value); 
@@ -779,61 +792,69 @@ void setVar(variable *var, int type, char* value, double num, int bool) {
     if (val) free(val);
 }
 
-
 /* actual function code / helpers                                                       */
-void negateBoolean(variable *var) { if (var->type == BOOL) { var->bool = !var->bool; } else { cry("NOT must be used on a bool!"); }}
+void negateBoolean(variable *var) { if (var->type == BOOL) { var->data.bool = !var->data.bool; } else { cry("NOT must be used on a bool!"); }}
 void writeFromVar(variable *var, char *path) { char *variable = stringFromVar(*var); writeFile(path, variable); free(variable); } 
-void labelJump(label *jump, int *programCounter) { *programCounter = jump->location; }
-void equalityCheckVarVsConst(variable **variables, int *variableCount, char **arguments, int flip) {
-    variable *var1 = findVar(variables, variableCount, arguments[1], 0);
-    variable var2; int output = 0; int type = grabType(arguments[0]); var2.type = type; var2.str = NULL;
-    if (type == NUM) { var2.num = (double)atof(arguments[2]); }
-    else if (type == STR) { var2.str = strdup(arguments[2]); }
-    else if (type == BOOL) { var2.bool = trueOrFalse(arguments[2]); } 
+void labelJump(int *location, int *programCounter) { *programCounter = *location; }
+void equalityCheckVarVsConst(HashMap *varMap, char **arguments, int flip) {
+    variable *var1 = searchHashMap(varMap, arguments[1]), var2;
+    int output = 0, type = grabType(arguments[0]); var2.type = type; var2.data.str = NULL;
+    if (type == NUM) { var2.data.num = (double)atof(arguments[2]); }
+    else if (type == STR) { var2.data.str = strdup(arguments[2]); }
+    else if (type == BOOL) { var2.data.bool = trueOrFalse(arguments[2]); } 
     if (var1 == NULL) { cry("No variable!"); }
     output = flip ? !areTwoVarsEqual(var1, &var2) : areTwoVarsEqual(var1, &var2);
-    if (var1->type == STR && var1->str != NULL) free(var1->str);
+    if (var1->type == STR && var1->data.str != NULL) free(var1->data.str);
     var1->type = BOOL;
-    var1->bool = output;
-    if (type == STR && var2.str != NULL) free(var2.str);
+    var1->data.bool = output;
+    if (type == STR && var2.data.str != NULL) free(var2.data.str);
 }
 void equalityCheckVarVsVar(variable *var1, variable *var2, int flip) {
     int output = 0;
     if (var1 == NULL || var2 == NULL) { cry("No variable!"); }
     output = flip ? !areTwoVarsEqual(var1, var2) : areTwoVarsEqual(var1, var2);
-    if (var1->type == STR && var1->str != NULL) free(var1->str);
+    if (var1->type == STR && var1->data.str != NULL) free(var1->data.str);
     var1->type = BOOL;
-    var1->bool = output;
+    var1->data.bool = output;
 }
-void jumpConditionally(label *jump, variable *var, int *programCounter, int flip) {
+
+void jumpConditionally(int *location, variable *var, int *programCounter, int flip) {
     int allowed = checkVarTruthiness(var);
     if (flip) { allowed = !allowed; }
-    if (allowed) labelJump(jump, programCounter);
+    if (allowed) labelJump(location, programCounter);
 }
-void standardMath(variable **variables, int *variableCount, char **arguments, char operation) {
+
+void standardMath(HashMap *varMap, char **arguments, char operation) {
     double op2 = 0;
-    variable *var1 = findVar(variables, variableCount, arguments[1], 1); 
-    variable *var2 = findVar(variables, variableCount, arguments[2], 0);
+    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]); 
+    if (!var1) { var1 = (variable *)mallocate(sizeof(variable)); addItemToMap(varMap, var1, arguments[1], (void (*)(void *))freeVariable); var1 = searchHashMap(varMap, arguments[1]); }
     if (var1->type != NUM) cry("You can only do math on a 'num' type variable!");
     if (var2 == NULL) { op2 = atof(arguments[2]); }
     else if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
-    else { op2 = var2->num; }
+    else { op2 = var2->data.num; }
     switch (operation) {
-        case '+': var1->num += op2; break;
-        case '-': var1->num -= op2; break;
-        case '*': var1->num *= op2; break;
-        case '/': if (op2 == 0.0) {cry("div by zero error\n");} else{ var1->num /= op2;} break;// this is when we tell the user to eat shit and die, nerd
-        default: var1->num = 0;
+        case '+': var1->data.num += op2; break;
+        case '-': var1->data.num -= op2; break;
+        case '*': var1->data.num *= op2; break;
+        case '/': if (op2 == 0.0) {cry("div by zero error\n");} else{ var1->data.num /= op2;} break; /* this is when we tell the user to eat shit and die, nerd */
+        default: var1->data.num = 0;
     }
 }
-void variableSet(variable **variables, int *variableCount, char **arguments, int argumentCount) { // confusing names, fuck you
+
+variable *createVarIfNotFound(HashMap *varMap, char *name) {
+    variable *var = searchHashMap(varMap, name);
+    if (!var) { var = (variable *)callocate(1, sizeof(variable)); addItemToMap(varMap, var, name, (void (*)(void *))freeVariable); var = searchHashMap(varMap, name); }
+    return var; 
+}
+
+void variableSet(HashMap *varMap, char **arguments, int argumentCount) {
     int type = grabType(arguments[0]); char *concatenated = NULL;
-    if (type == STR) concatenated = joinStringsSentence(arguments, argumentCount, 2); // stupid switch rules
+    if (type == STR) concatenated = joinStringsSentence(arguments, argumentCount, 2);
     switch (type) {
-        case IN: setVar(findVar(variables, variableCount, arguments[1], 1), type, NULL, 0, 0); break;
-        case STR: setVar(findVar(variables, variableCount, arguments[1], 1), type, concatenated, 0.0, 0); break;
-        case NUM: setVar(findVar(variables, variableCount, arguments[1], 1), type, NULL, (double)atof(arguments[2]), 0); break; 
-        case BOOL: setVar(findVar(variables, variableCount, arguments[1], 1), type, NULL, 0.0, trueOrFalse(arguments[2])); break;
+        case IN: setVar(createVarIfNotFound(varMap, arguments[1]), type, NULL, 0, 0); break;
+        case STR: setVar(createVarIfNotFound(varMap, arguments[1]), type, concatenated, 0.0, 0); break;
+        case NUM: setVar(createVarIfNotFound(varMap, arguments[1]), type, NULL, (double)atof(arguments[2]), 0); break; 
+        case BOOL: setVar(createVarIfNotFound(varMap, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2])); break;
         default: cry("That's not a valid type!\n");
     }
     free(concatenated);
@@ -846,199 +867,386 @@ void grabTypeFromVar(variable check, variable *var) {
         default: set_variable_value(var, STR, "none", 0.0, 0); break;
     }
 }
-void compareNums(variable **variables, int *variableCount, char **arguments, char operation) {
-    variable *var1 = findVar(variables, variableCount, arguments[1], 0);
-    variable *var2 = findVar(variables, variableCount, arguments[2], 0);
+
+void compareNums(HashMap *varMap, char **arguments, char operation) {
+    variable *var1 = searchHashMap(varMap, arguments[1]);
+    variable *var2 = searchHashMap(varMap, arguments[2]);
     double operand1 = 0; double operand2 = 0;
     if (var1 == NULL) { cry("No variable!"); }
     else if (var1->type != NUM) { cry("Operand must be of \"num\" type!\n"); }
-    else { operand1 = var1->num; }
+    else { operand1 = var1->data.num; }
     if (var2 == NULL) { operand2 = (double)atof(arguments[2]); }
     else if (var2->type != NUM) { cry("Operand must be of \"num\" type!\n"); }
-    else { operand2 = var2->num; }
+    else { operand2 = var2->data.num; }
 
     var1->type = BOOL;
 
     switch (operation) {
-        case '>': var1->bool = (operand1 > operand2); break;
-        case ']': var1->bool = (operand1 >= operand2); break;
-        case '<': var1->bool = (operand1 < operand2); break;
-        case '[': var1->bool = (operand1 <= operand2); break;
-        default: var1->bool = 0; break;
+        case '>': var1->data.bool = (operand1 > operand2); break;
+        case ']': var1->data.bool = (operand1 >= operand2); break;
+        case '<': var1->data.bool = (operand1 < operand2); break;
+        case '[': var1->data.bool = (operand1 <= operand2); break;
+        default: var1->data.bool = 0; break;
     }
 }
-void compareBools(variable **variables, int *variableCount, char **arguments, char operation, char flip) {
-    variable *var1 = findVar(variables, variableCount, arguments[1], 0);
-    variable *var2 = findVar(variables, variableCount, arguments[2], 0);
+
+void compareBools(HashMap *varMap, char **arguments, char operation, char flip) {
+    variable *var1 = searchHashMap(varMap, arguments[1]);
+    variable *var2 = searchHashMap(varMap, arguments[2]);
     int operand1 = 0; int operand2 = 0;
-    if (var1 == NULL) { cry("No variable!"); } // can't save SHIT if you dont have a variable
+    if (var1 == NULL) { cry("No variable!"); } /* can't save SHIT if you dont have a variable */
     else { operand1 = checkVarTruthiness(var1); }
     if (var2 == NULL) { if (grabType(arguments[0])) {operand2 = trueOrFalse(arguments[2]);} else { operand2 = atoi(arguments[2]); }}
     else { operand2 = checkVarTruthiness(var2); }
-    if (var1->type == STR && var1->str != NULL) free(var1->str);
+    if (var1->type == STR && var1->data.str != NULL) free(var1->data.str);
     var1->type = BOOL;
     switch (operation) {
-        case '&': var1->bool = flip ? (operand1 && operand2) : !(operand1 && operand2); break;
-        case '|': var1->bool = flip ? (operand1 || operand2) : !(operand1 || operand2); break;
-        case '!': var1->bool = (operand1 != operand2); break;
-        default: var1->bool = 0; break;
+        case '&': var1->data.bool = flip ? (operand1 && operand2) : !(operand1 && operand2); break;
+        case '|': var1->data.bool = flip ? (operand1 || operand2) : !(operand1 || operand2); break;
+        case '!': var1->data.bool = (operand1 != operand2); break;
+        default: var1->data.bool = 0; break;
     }
 }
-void loadList(list **lists, int *listCount, char *name, char *path) {
-    list *li = findList(*lists, *listCount, name); char *temp = readFile(path);
-    if (li == NULL) { addListToLists(lists, name, listCount); li = findList(*lists, *listCount, name); }
-    else { freeList(*li); li->name = strdup(name); li->elements = 0; li->variables = (variable *)malloc(sizeof(variable)); memset(li->variables, 0, sizeof(variable)); }
+
+char *formatList(LinkedList li) {
+    char *final; int i; size_t bytes = 3; listItem *current = li.first;
+    for (i = 0; i < li.elements; i++) {
+        DEBUG_PRINTF("\n\n%d\n\n", i);
+        bytes += stringLenFromVar(*(variable *)current->data) + 2; 
+        if (((variable *)current->data)->type == STR) { bytes += 2; } /* "" */
+        current = current->next;
+    }
+    final = (char *)mallocate(bytes); if (final == NULL) cry("List Formatting failed!");
+    final[0] = '\0';
+
+    strcat(final, "[");
+    current = li.first;
+    for (i = 0; i < li.elements; i++) {
+        char *temp = stringFromVar(*((variable *)current->data));
+        if (temp) {
+            if (((variable *)current->data)->type == STR) strcat(final, "\"");
+            strcat(final, temp);
+            if (((variable *)current->data)->type == STR) strcat(final, "\"");
+            free(temp);
+            if (i + 1 != li.elements) strcat(final, ","); /* make sure no trailing comma is left */
+        }
+        current = current->next;
+    }
+    strcat(final, "]");
+    return final;
+}
+
+void unFormatList(LinkedList *li, char *string) {
+    int type, i, j, start = 0; 
+    while (1) { if (string[start] == '[') { break; } start += 1; }
+    for (i = start; i < (int)strlen(string); i++) {
+        variable var; char *value, c = string[i]; int length = 0;
+        if (c == ']') break;
+        if (c == '[' || c == ',') continue;
+        if (c == '"') { type = STR; continue; }
+        if (type != STR) { if (isdigit(c)) { type = NUM; } else { type = BOOL; }}
+
+        while ((c = string[i + length]) != ',' && (c = string[i + length]) != '"' && (c = string[i + length]) != '[' && (c = string[i + length]) != ']') { length += 1; DEBUG_PRINT(&c); }
+
+        value = (char *)callocate(length + 1, sizeof(char));
+        for (j = 0; j < length; j++) { value[j] = string[i + j]; }
+        i += length; 
+        value[length] = '\0';
+        DEBUG_PRINT(value);
+
+        var.type = type;
+        if (type == NUM) { var.data.num = (double)atof(value); }
+        else if (type == STR) { var.data.str = value; }
+        else if (type == BOOL) { var.data.bool = trueOrFalse(value); }
+        appendElementToList(li, var); type = 0; free(value);
+    }
+}
+
+void loadList(HashMap *listMap, char *name, char *path) {
+    LinkedList *li = searchHashMap(listMap, name), *new; char *temp = readFile(path);
+    if (li != NULL) { freeList(li); }
+    new = (LinkedList *)callocate(1, sizeof(LinkedList)); addItemToMap(listMap, new, name, (void (*)(void *))freeList); li = searchHashMap(listMap, name);
     unFormatList(li, temp); free(temp);
 }
-void listAppendConstant(list *li, char **arguments, int *argumentCount) {
+
+void listAppendConstant(LinkedList *li, char **arguments, int *argumentCount) {
     int type = grabType(arguments[1]);
     variable var; var.type = type;
-    if (type == NUM) { var.num = (double)atof(arguments[2]); }
-    else if (type == BOOL) { var.bool = trueOrFalse(arguments[2]); }
-    else if (type == STR) { var.str = joinStringsSentence(arguments, *argumentCount, 2); }
-    appendElement(li, var); if (type == STR && var.str) free(var.str);
+    if (type == NUM) { var.data.num = (double)atof(arguments[2]); }
+    else if (type == BOOL) { var.data.bool = trueOrFalse(arguments[2]); }
+    else if (type == STR) { var.data.str = joinStringsSentence(arguments, *argumentCount, 2); }
+    appendElementToList(li, var); if (type == STR && var.data.str) free(var.data.str);
 }
 
-/* function wrappers using openFile                                                     */
-/* rule of thumb: these should be EXACTLY one function call.                            */
-/* if there's more than one function being called that isn't being passed as an arg...  */
-/* ...you're doing something wrong                                                      */
-/* (some exceptions allowed because c is voodoo sometimes, so like max 3 statements)    */
-/* this is the ENTIRE SIMAS stdlib up here, fyi                                         */
+variable create_variable_with_value(char *name, int type, char *value, double num, int bool) {
+    variable var;
+    switch (type) {
+        case STR: set_variable_value(&var, type, value, 0.0, 0); break;
+        case NUM: set_variable_value(&var, type, NULL, num, 0); break;
+        case BOOL: set_variable_value(&var, type, NULL, 0.0, bool); break;
+        default: cry("Invalid type!\n");
+    }
+    return var;
+}
 
 /* console i/o      */
-void con_prints(openFile *file) { printf(" "); }
-void con_println(openFile *file) { printf("\n"); }
-void con_printv(openFile *file) { freeAndPrint(stringFromVar(*findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[0], 0))); }
+void con_prints(openFile *file) { putc(' ', stdout); }
+void con_println(openFile *file) { puts(""); }
+void con_printv(openFile *file) { freeAndPrint(stringFromVar(*(variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]))); }
 void con_printc(openFile *file) { freeAndPrint(joinStringsSentence(file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount, 0)); }
 /*file i/o          */
-void fio_read(openFile *file) { char *read = readFile(file->instructions[file->programCounter]->arguments[0]); set_variable_value(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 1), STR, read, 0.0, 0); free(read); }
+void fio_read(openFile *file) { char *read = readFile(file->instructions[file->programCounter]->arguments[0]); set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), STR, read, 0.0, 0); free(read); }
 void fio_write(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[0], joinStringsSentence(file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount, 1)); }
-void fio_writev(openFile *file) { writeFromVar(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 0), file->instructions[file->programCounter]->arguments[0]); }
+void fio_writev(openFile *file) { writeFromVar(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), file->instructions[file->programCounter]->arguments[0]); }
 /* misc             */
-void etc_not(openFile *file) { negateBoolean(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[0], 0));  }
-void etc_simas(openFile *file) { printf("%s", poem); }
+void etc_not(openFile *file) { negateBoolean(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]));  }
+void etc_quit(openFile *file) { freeFile(*file); freeInstructionSet(ValidInstructions); exit(0); }
 /* jumps            */
-void jmp_jump(openFile *file) { labelJump(findLabel(file->labels, file->labelCount, file->instructions[file->programCounter]->arguments[0]), &file->programCounter); }
-void jmp_jumpv(openFile *file) { jumpConditionally(findLabel(file->labels, file->labelCount, file->instructions[file->programCounter]->arguments[0]), findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 0), &file->programCounter, 0); }
-void jmp_jumpnv(openFile *file) { jumpConditionally(findLabel(file->labels, file->labelCount, file->instructions[file->programCounter]->arguments[0]), findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 0), &file->programCounter, 1); }
+void jmp_jump(openFile *file) { labelJump(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), &file->programCounter); }
+void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), &file->programCounter, 0); }
+void jmp_jumpnv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), &file->programCounter, 1); }
 /* math             */
-void mat_add(openFile *file) { standardMath(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '+'); }
-void mat_sub(openFile *file) { standardMath(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '-'); }
-void mat_mul(openFile *file) { standardMath(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '*'); }
-void mat_div(openFile *file) { standardMath(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '/'); }
+void mat_add(openFile *file) { standardMath(&file->variables, file->instructions[file->programCounter]->arguments, '+'); }
+void mat_sub(openFile *file) { standardMath(&file->variables, file->instructions[file->programCounter]->arguments, '-'); }
+void mat_mul(openFile *file) { standardMath(&file->variables, file->instructions[file->programCounter]->arguments, '*'); }
+void mat_div(openFile *file) { standardMath(&file->variables, file->instructions[file->programCounter]->arguments, '/'); }
 /* variable ops     */
-void var_set(openFile *file) { variableSet(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
-void var_type(openFile *file) { grabTypeFromVar(*findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[0], 0), findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 1)); }
-void var_conv(openFile *file) { convert(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[0], 0), grabType(file->instructions[file->programCounter]->arguments[1])); }
-void var_copy(openFile *file) { variable *var = findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 1); varcpy(var, findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[0], 0)); } 
+void var_set(openFile *file) { variableSet(&file->variables, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
+void var_type(openFile *file) { grabTypeFromVar(*(variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]), createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1])); }
+void var_conv(openFile *file) { convert(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]), grabType(file->instructions[file->programCounter]->arguments[1])); }
+void var_copy(openFile *file) { variable *var = createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]); varcpy(var, searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0])); } 
 /* comparison       */
-void cmp_gt(openFile *file) { compareNums(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '>'); }
-void cmp_gte(openFile *file) { compareNums(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, ']'); }
-void cmp_st(openFile *file) { compareNums(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '<'); }
-void cmp_ste(openFile *file) { compareNums(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '['); }
-void cmp_eqv(openFile *file) { equalityCheckVarVsVar(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 0), findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[2], 0), 0); }
-void cmp_neqv(openFile *file) { equalityCheckVarVsVar(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 0), findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[2], 0), 1); }
-void cmp_eqc(openFile *file) { equalityCheckVarVsConst(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, 0); }
-void cmp_neqc(openFile *file) { equalityCheckVarVsConst(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, 1); }
-void cmp_and(openFile *file) { compareBools(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '&', 0); }
-void cmp_nand(openFile *file) { compareBools(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '&', 1); }
-void cmp_or(openFile *file) { compareBools(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '|', 0); }
-void cmp_nor(openFile *file) { compareBools(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '|', 1); }
-void cmp_xor(openFile *file) { compareBools(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments, '!', 0); }
+void cmp_gt(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter]->arguments, '>'); }
+void cmp_gte(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter]->arguments, ']'); }
+void cmp_st(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter]->arguments, '<'); }
+void cmp_ste(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter]->arguments, '['); }
+void cmp_eqv(openFile *file) { equalityCheckVarVsVar(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[2]), 0); }
+void cmp_neqv(openFile *file) { equalityCheckVarVsVar(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[2]), 1); }
+void cmp_eqc(openFile *file) { equalityCheckVarVsConst(&file->variables, file->instructions[file->programCounter]->arguments, 0); }
+void cmp_neqc(openFile *file) { equalityCheckVarVsConst(&file->variables, file->instructions[file->programCounter]->arguments, 1); }
+void cmp_and(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter]->arguments, '&', 0); }
+void cmp_nand(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter]->arguments, '&', 1); }
+void cmp_or(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter]->arguments, '|', 0); }
+void cmp_nor(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter]->arguments, '|', 1); }
+void cmp_xor(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter]->arguments, '!', 0); }
 /* list ops         */
-void lis_del(openFile *file) { removeElement(findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0]), atoi(file->instructions[file->programCounter]->arguments[1]) - 1); }
-void lis_appv(openFile *file) { appendElement(findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0]), *findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[2], 0)); }
-void lis_show(openFile *file) { freeAndPrint(formatList(*findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0]))); }
-void lis_new(openFile *file) { addListToLists(&file->lists, file->instructions[file->programCounter]->arguments[0], &file->listCount); }
-void lis_upv(openFile *file) { varcpy(&findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0])->variables[atoi(file->instructions[file->programCounter]->arguments[1]) - 1], findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[3], 0)); }
-void lis_acc(openFile *file) { varcpy(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[2], 1), &findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0])->variables[atoi(file->instructions[file->programCounter]->arguments[1]) - 1]); }
-void lis_load(openFile *file) { loadList(&file->lists, &file->listCount, file->instructions[file->programCounter]->arguments[0], file->instructions[file->programCounter]->arguments[1]); }
-void lis_len(openFile *file) { set_variable_value(findVar(&file->variables, &file->variableCount, file->instructions[file->programCounter]->arguments[1], 1), NUM, NULL, findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0])->elements, 0); }
-void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[1], formatList(*findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0]))); }
-void lis_upc(openFile *file) { char **arguments = file->instructions[file->programCounter]->arguments; variable var = create_variable_with_value(NULL, grabType(arguments[2]), joinStringsSentence(arguments, file->instructions[file->programCounter]->argumentCount, 4), (double)atof(arguments[4]), trueOrFalse(arguments[3])); varcpy(&findList(file->lists, file->listCount, arguments[0])->variables[atoi(arguments[1]) - 1], &var); }
-void lis_appc(openFile *file) { listAppendConstant(findList(file->lists, file->listCount, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, &file->instructions[file->programCounter]->argumentCount); }
+void lis_del(openFile *file) { LinkedList *li = searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]); if (atoi(file->instructions[file->programCounter]->arguments[1]) > li->elements) { handleError("invalid index", 92, 0, file); } else { removeElementFromList(li, atoi(file->instructions[file->programCounter]->arguments[1]) - 1); }}
+void lis_appv(openFile *file) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), *(variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[2])); }
+void lis_show(openFile *file) { freeAndPrint(formatList(*(LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
+void lis_new(openFile *file) { LinkedList *new = (LinkedList *)callocate(1, sizeof(LinkedList)); addItemToMap(&file->lists, new, file->instructions[file->programCounter]->arguments[0], (void (*)(void *))freeList); }
+void lis_upv(openFile *file) { varcpy((variable *)traverseList(atoi(file->instructions[file->programCounter]->arguments[1]) - 1, 0, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data, searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[3])); }
+void lis_acc(openFile *file) { varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[2]), (variable *)traverseList(atoi(file->instructions[file->programCounter]->arguments[1]) - 1, 0, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data); }
+void lis_load(openFile *file) { loadList(&file->lists, file->instructions[file->programCounter]->arguments[0], file->instructions[file->programCounter]->arguments[1]); }
+void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), NUM, NULL, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->elements, 0); }
+void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[1], formatList(*(LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
+void lis_upc(openFile *file) { char **arguments = file->instructions[file->programCounter]->arguments; variable var = create_variable_with_value(NULL, grabType(arguments[2]), joinStringsSentence(arguments, file->instructions[file->programCounter]->argumentCount, 4), (double)atof(arguments[4]), trueOrFalse(arguments[3])); varcpy((variable *)traverseList(atoi(arguments[1]) - 1, 0, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data, &var); }
+void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, &file->instructions[file->programCounter]->argumentCount); }
 
-int executeInstruction(openFile *cur) { // all of these are defined up here so this function can operate independently of any files
+/* command functions for the CLI */
+char *cmd_quit(instruction *inst, openFile *file) { return NULL; } /* this is what we call a pro gamer move */
+char *cmd_clear(instruction *inst, openFile *file) { freeFile(*file); memset(file, 0, sizeof(openFile)); return ""; }
+char *cmd_debug(instruction *inst, openFile *file) { debugMode = !debugMode; return "debugger toggled\n"; }
+char *cmd_load(instruction *inst, openFile *file) {
+    if (inst->argumentCount) {
+        freeFile(*file);
+        *file = openSimasFile(inst->arguments[0]);
+        if (file->path) { return "loaded successfully\n"; }
+    } else return "you need to specify a file\n";
+    return "";
+}
+char *cmd_save(instruction *inst, openFile *file) {
+    if (inst->argumentCount) {
+        FILE* dest = fopen(inst->arguments[0], "wb");
+        if (dest) {
+            int i;
+            for (i = 0; i < file->instructionCount; i++) {
+                char *string = unParseInstructions(file->instructions[i]);
+                fwrite(string, sizeof(char), strlen(string), dest);
+                free(string); fputc('\n', dest);
+            }
+            fclose(dest); return "successfully saved!\n";
+        } else return "unable to open file\n";
+    } else return "you need to specify a file to save to \n";
+}
+char *cmd_dump(instruction *inst, openFile *file) {
+    int i;
+    for (i = 0; i < file->instructionCount; i++) {
+        char *string = unParseInstructions(file->instructions[i]);
+        printf("%d: %s\n", i + 1, string); free(string);
+    } 
+    return ""; /* dummy print */
+}
+char *cmd_edit(instruction *inst, openFile *file) {
+    if (inst->argumentCount) {
+        if (atoi(inst->arguments[0]) <= file->instructionCount && file->instructionCount && (atoi(inst->arguments[0]) - 1) >= 0) {
+            char *out, *temporary, *old = unParseInstructions(file->instructions[atoi(inst->arguments[0]) - 1]);
+            instruction *instruct;
+            printf("Old instruction: %s\n", old); free(old);
+            printf("Enter new instruction: ");
+            out = grabUserInput(256); temporary = stripSemicolon(out); strip(temporary, ' ');
+            instruct = parseInstructions(out, ValidInstructions);
+            if (strcmp(temporary, "") != 0 && strchr(out, ';') && instruct->argumentCount >= findNumberArgs(instruct->operation, ValidInstructions)) { 
+                freeInstruction(file->instructions[atoi(inst->arguments[0]) - 1]);
+                file->instructions[atoi(inst->arguments[0]) - 1] = add_instruction(instruct->operation, instruct->arguments, instruct->prefix, instruct->argumentCount);
+            } else if (strchr(out, ';') == NULL) {
+                printf("code must end with a semicolon\n");
+            } else if (instruct->argumentCount < findNumberArgs(instruct->operation, ValidInstructions)) {
+                printf("too little arguments for instruction\n");
+            }
+            freeInstruction(instruct); free(temporary); free(out);
+            return "";
+        }
+
+        else if (!file->instructionCount) return "no instructions\n";
+        else if (atoi(inst->arguments[0]) >= file->instructionCount) return "invalid index\n";
+    }
+    else return "you need to specify an index\n";
+    return "";
+}
+char *cmd_help(instruction *inst, openFile *file) {
+    return(
+        "CMAS Command List:\n"
+        "!quit: Quits the CMAS command line.\n"
+        "!clear: Resets the current program.\n"
+        "!edit <index>: Edit the instruction at an index, starting from 1.\n"
+        "!dump: Dumps the current program to terminal.\n"
+        "!load <filename>: Loads a SIMAS file.\n"
+        "!save <filename>: Saves the current SIMAS program to disk.\n"
+        "!run: Executes the current SIMAS program.\n"
+        "Please read the README.md for a list of all instructions and their operators.\n"
+    );
+}
+char *cmd_run(instruction *inst, openFile *file) {
+    if (file->instructionCount) {
+        executeFile(file, 0); 
+        cleanFile(file); return ""; 
+    } else { return "no instructions to execute\n"; }
+}
+
+void executeInstruction(openFile *cur) { /* all of these are defined up here so this function can operate independently of any files */
+    int i;
     DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", cur->instructions[cur->programCounter]->operation, cur->programCounter);
-    if (strcmp(cur->instructions[cur->programCounter]->operation, "quit") == 0) { return 0; } 
-    if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return 1;
-    for (int i = 0; i < ValidInstructions.count; i++) { 
+    if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return;
+    for (i = 0; i < ValidInstructions.count; i++) { 
         if (strcmp(ValidInstructions.set[i].name, cur->instructions[cur->programCounter]->operation) == 0) {
-            if (ValidInstructions.set[i].prefix != NULL && cur->instructions[cur->programCounter]->prefix != NULL) {
+            if (ValidInstructions.set[i].prefix != NULL) {
+                if (cur->instructions[cur->programCounter]->prefix == NULL) continue;
                 if (strcmp(ValidInstructions.set[i].prefix, cur->instructions[cur->programCounter]->prefix) != 0) continue;
             }
-            ((void(*)(openFile*))ValidInstructions.set[i].functionPointer)(cur);
+            (ValidInstructions.set[i].functionPointer)(cur);
         }
     }
-    return 1;
 }
 
 void executeFile(openFile *current, int doFree) {
-    preprocessLabels(current);
-    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { 
-        if (executeInstruction(current) == 0) break;
-    }
-
+    preprocessLabels(current); current->lists = create_hashmap(1); current->variables = create_hashmap(10); 
+    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); }
     if (doFree) freeFile(*current);
 }
 
 void setUpStdlib(void) {
+    int count = 44;
+    operator *ops = (operator *)mallocate(sizeof(operator) * count);
     addPrefix("list", &ValidInstructions);
-    operator printv = create_operator("print", NULL, con_printv, 1); addOperator(&printv, &ValidInstructions);
-    operator println = create_operator("println", NULL, con_println, 0); addOperator(&println, &ValidInstructions);
-    operator prints = create_operator("prints", NULL, con_prints, 0); addOperator(&prints, &ValidInstructions);
-    operator printc = create_operator("printc", NULL, con_printc, 1); addOperator(&printc, &ValidInstructions);
-    operator read = create_operator("read", NULL, fio_read, 2); addOperator(&read, &ValidInstructions);
-    operator write = create_operator("write", NULL, fio_write, 2); addOperator(&write, &ValidInstructions);
-    operator writev = create_operator("writev", NULL, fio_writev, 2); addOperator(&writev, &ValidInstructions);
-    operator not = create_operator("not", NULL, etc_not, 1); addOperator(&not, &ValidInstructions);
-    operator poem = create_operator("poem", NULL, etc_simas, 0); addOperator(&poem, &ValidInstructions);
-    operator add = create_operator("add", NULL, mat_add, 3); addOperator(&add, &ValidInstructions);
-    operator sub = create_operator("sub", NULL, mat_sub, 3); addOperator(&sub, &ValidInstructions);
-    operator mul = create_operator("mul", NULL, mat_mul, 3); addOperator(&mul, &ValidInstructions);
-    operator div = create_operator("div", NULL, mat_div, 3); addOperator(&div, &ValidInstructions);
-    operator set = create_operator("set", NULL, var_set, 2); addOperator(&set, &ValidInstructions);
-    operator type = create_operator("type", NULL, var_type, 2); addOperator(&type, &ValidInstructions);
-    operator conv = create_operator("conv", NULL, var_conv, 2); addOperator(&conv, &ValidInstructions);
-    operator copy = create_operator("copy", NULL, var_copy, 2); addOperator(&copy, &ValidInstructions);
-    operator gt = create_operator("gt", NULL, cmp_gt, 3); addOperator(&gt, &ValidInstructions);
-    operator gte = create_operator("gte", NULL, cmp_gte, 3); addOperator(&gte, &ValidInstructions);
-    operator st = create_operator("st", NULL, cmp_st, 3); addOperator(&st, &ValidInstructions);
-    operator ste = create_operator("ste", NULL, cmp_ste, 3); addOperator(&ste, &ValidInstructions);
-    operator eqv = create_operator("eqv", NULL, cmp_eqv, 3); addOperator(&eqv, &ValidInstructions);
-    operator neqv = create_operator("neqv", NULL, cmp_neqv, 3); addOperator(&neqv, &ValidInstructions);
-    operator eqc = create_operator("eqc", NULL, cmp_eqc, 3); addOperator(&eqc, &ValidInstructions);
-    operator neqc = create_operator("neqc", NULL, cmp_neqc, 3); addOperator(&neqc, &ValidInstructions);
-    operator and = create_operator("and", NULL, cmp_and, 3); addOperator(&and, &ValidInstructions);
-    operator nand = create_operator("nand", NULL, cmp_nand, 3); addOperator(&nand, &ValidInstructions);
-    operator or = create_operator("or", NULL, cmp_or, 3); addOperator(&or, &ValidInstructions);
-    operator nor = create_operator("nor", NULL, cmp_nor, 3); addOperator(&nor, &ValidInstructions);
-    operator xor = create_operator("xor", NULL, cmp_xor, 3); addOperator(&xor, &ValidInstructions);
-    operator jump = create_operator("jump", NULL, jmp_jump, 1); addOperator(&jump, &ValidInstructions);
-    operator jumpv = create_operator("jumpv", NULL, jmp_jumpv, 2); addOperator(&jumpv, &ValidInstructions);
-    operator jumpnv = create_operator("jumpnv", NULL, jmp_jumpnv, 2); addOperator(&jumpnv, &ValidInstructions);
-    operator del = create_operator("del", "list", lis_del, 1); addOperator(&del, &ValidInstructions);
-    operator appv = create_operator("appv", "list", lis_appv, 2); addOperator(&appv, &ValidInstructions);
-    operator show = create_operator("show", "list", lis_show, 0); addOperator(&show, &ValidInstructions);
-    operator new = create_operator("new", "list", lis_new, 0); addOperator(&new, &ValidInstructions);
-    operator upv = create_operator("upv", "list", lis_upv, 3); addOperator(&upv, &ValidInstructions);
-    operator acc = create_operator("acc", "list", lis_acc, 2); addOperator(&acc, &ValidInstructions);
-    operator load = create_operator("load", "list", lis_load, 2); addOperator(&load, &ValidInstructions);
-    operator len = create_operator("len", "list", lis_len, 1); addOperator(&len, &ValidInstructions);
-    operator dump = create_operator("dump", "list", lis_dump, 1); addOperator(&dump, &ValidInstructions);
-    operator upc = create_operator("upc", "list", lis_upc, 3); addOperator(&upc, &ValidInstructions);
-    operator appc = create_operator("appc", "list", lis_appc, 2); addOperator(&appc, &ValidInstructions);
+    ops[ 0] = create_operator("print", NULL, (void(*)(void*))con_printv, 1); 
+    ops[ 1] = create_operator("println", NULL, (void(*)(void*))con_println, 0);
+    ops[ 2] = create_operator("prints", NULL, (void(*)(void*))con_prints, 0); 
+    ops[ 3] = create_operator("printc", NULL, (void(*)(void*))con_printc, 1); 
+    ops[ 4] = create_operator("read", NULL, (void(*)(void*))fio_read, 2); 
+    ops[ 5] = create_operator("write", NULL, (void(*)(void*))fio_write, 2);
+    ops[ 6] = create_operator("writev", NULL, (void(*)(void*))fio_writev, 2); 
+    ops[ 7] = create_operator("not", NULL, (void(*)(void*))etc_not, 1);
+    ops[ 8] = create_operator("quit", NULL, (void(*)(void*))etc_quit, 1);
+    ops[ 9] = create_operator("add", NULL, (void(*)(void*))mat_add, 3);
+    ops[10] = create_operator("sub", NULL, (void(*)(void*))mat_sub, 3);
+    ops[11] = create_operator("mul", NULL, (void(*)(void*))mat_mul, 3);
+    ops[12] = create_operator("div", NULL, (void(*)(void*))mat_div, 3);
+    ops[13] = create_operator("set", NULL, (void(*)(void*))var_set, 2);
+    ops[14] = create_operator("type", NULL, (void(*)(void*))var_type, 2);
+    ops[15] = create_operator("conv", NULL, (void(*)(void*))var_conv, 2);
+    ops[16] = create_operator("copy", NULL, (void(*)(void*))var_copy, 2);
+    ops[17] = create_operator("gt", NULL, (void(*)(void*))cmp_gt, 3); 
+    ops[18] = create_operator("gte", NULL, (void(*)(void*))cmp_gte, 3); 
+    ops[19] = create_operator("st", NULL, (void(*)(void*))cmp_st, 3); 
+    ops[20] = create_operator("ste", NULL, (void(*)(void*))cmp_ste, 3); 
+    ops[21] = create_operator("eqv", NULL, (void(*)(void*))cmp_eqv, 3); 
+    ops[22] = create_operator("neqv", NULL, (void(*)(void*))cmp_neqv, 3);
+    ops[23] = create_operator("eqc", NULL, (void(*)(void*))cmp_eqc, 3); 
+    ops[24] = create_operator("neqc", NULL, (void(*)(void*))cmp_neqc, 3);
+    ops[25] = create_operator("and", NULL, (void(*)(void*))cmp_and, 3); 
+    ops[26] = create_operator("nand", NULL, (void(*)(void*))cmp_nand, 3);
+    ops[27] = create_operator("or", NULL, (void(*)(void*))cmp_or, 3); 
+    ops[28] = create_operator("nor", NULL, (void(*)(void*))cmp_nor, 3);
+    ops[29] = create_operator("xor", NULL, (void(*)(void*))cmp_xor, 3);
+    ops[30] = create_operator("jump", NULL, (void(*)(void*))jmp_jump, 1);
+    ops[31] = create_operator("jumpv", NULL, (void(*)(void*))jmp_jumpv, 2); 
+    ops[32] = create_operator("jumpnv", NULL, (void(*)(void*))jmp_jumpnv, 2);
+    ops[33] = create_operator("del", "list", (void(*)(void*))lis_del, 1); 
+    ops[34] = create_operator("appv", "list", (void(*)(void*))lis_appv, 2); 
+    ops[35] = create_operator("show", "list", (void(*)(void*))lis_show, 0); 
+    ops[36] = create_operator("new", "list", (void(*)(void*))lis_new, 0); 
+    ops[37] = create_operator("upv", "list", (void(*)(void*))lis_upv, 3); 
+    ops[38] = create_operator("acc", "list", (void(*)(void*))lis_acc, 2); 
+    ops[39] = create_operator("load", "list", (void(*)(void*))lis_load, 2); 
+    ops[40] = create_operator("len", "list", (void(*)(void*))lis_len, 1); 
+    ops[41] = create_operator("dump", "list", (void(*)(void*))lis_dump, 1); 
+    ops[42] = create_operator("upc", "list", (void(*)(void*))lis_upc, 3); 
+    ops[43] = create_operator("appc", "list", (void(*)(void*))lis_appc, 2); 
+    addOperatorSet(ops, &ValidInstructions, count);
+    free(ops);
+}
+
+void setUpCommands() {
+    int count = 9, i;
+    command **cmds = (command **)mallocate(count * sizeof(command *));
+    for (i = 0; i < count; i++) cmds[i] = (command *)mallocate(sizeof(command));
+    cmds[0]->commandPointer = cmd_quit;
+    cmds[1]->commandPointer = cmd_run;
+    cmds[2]->commandPointer = cmd_load;
+    cmds[3]->commandPointer = cmd_save;
+    cmds[4]->commandPointer = cmd_dump;
+    cmds[5]->commandPointer = cmd_clear;
+    cmds[6]->commandPointer = cmd_edit;
+    cmds[7]->commandPointer = cmd_help;
+    cmds[8]->commandPointer = cmd_debug;
+    ValidCommands = create_hashmap(9); 
+    addItemToMap(&ValidCommands, cmds[0], "!quit", free);
+    addItemToMap(&ValidCommands, cmds[1], "!run", free);
+    addItemToMap(&ValidCommands, cmds[2], "!load", free);
+    addItemToMap(&ValidCommands, cmds[3], "!save", free);
+    addItemToMap(&ValidCommands, cmds[4], "!dump", free);
+    addItemToMap(&ValidCommands, cmds[5], "!clear", free);
+    addItemToMap(&ValidCommands, cmds[6], "!edit", free);
+    addItemToMap(&ValidCommands, cmds[7], "!help", free);
+    addItemToMap(&ValidCommands, cmds[8], "!debug", free);
+    free(cmds);
 }
 
 int main(int argc, const char * argv[]) {
+    openFile new;
+    memset(&new, 0, sizeof(openFile));
+    #if ALLOC_DEBUGGING == 1
+    allocatorLog = fopen("./allocs.log", "w");
+    #endif
+
     setUpStdlib();
-    if (argc >= 2) { 
-        if (argc >= 3) { if (strcmp(argv[2], "-d") == 0 || strcmp(argv[2], "--debug") == 0) { debugMode = 1; printf("debug mode enabled\n"); }}
-        openFile new = openSimasFile(argv[1]); executeFile(&new, 1);
-    } else { beginCommandLine(); }
+
+    if (argc == 2) { if (strcmp(argv[1], "-d") == 0) { toggleDebugMode(); }};
+
+    if (argc >= 2 && !debugMode) { 
+        if (argc == 3) { if (strcmp(argv[2], "-d") == 0) { toggleDebugMode(); }}
+        new = openSimasFile(argv[1]);
+        executeFile(&new, 1);
+    } else { 
+        beginCommandLine("CMAS (C Simple Assembly) Interpreter.\nWritten by tuvalutorture, Licensed under GNU GPLv3.\nUsing The SIMAS Programming Language, created by Turrnut.\nGitHub repo: https://github.com/tuvalutorture/simas \nType !help for a list of commands.\n", &new); 
+    }
 
     freeInstructionSet(ValidInstructions);
 
+    #if ALLOC_DEBUGGING == 1
+    fclose(allocatorLog);
+    #endif
+
     return 0;
-} // we are the shinglefuckers of bong juice ltd.
+}
+/* we are the shinglefuckers of bong juice ltd. */

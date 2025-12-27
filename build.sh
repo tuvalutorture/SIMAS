@@ -1,1 +1,1 @@
-gcc simas.c -o simas -Wall -Wextra -pedantic -Wno-unused-parameter -g3 -O0 
+gcc simas.c -o simas -Wall -Wextra -pedantic -g3 -O0 -I../includes -Wno-unused-parameter -std=c89

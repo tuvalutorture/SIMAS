@@ -24,3 +24,7 @@ massif.*
 
 # testing data
 *.sad
+
+# unused cli
+cmd.c
+allocs.log
