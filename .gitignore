@@ -27,3 +27,4 @@ massif.*
 
 # unused cli
 cmd.c
+allocs.log
