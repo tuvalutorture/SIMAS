@@ -6,6 +6,18 @@
 /* lord 171 BC, but their inventions were lost to time in the year  */
 /* 582 ACDC, and were only just now redicovered in the present day. */
 
+/*                          In my eyes                              */
+/*                          Indisposed                              */
+/*                    In disguises no one knows                     */
+/*                         Hides the face                           */
+/*                         Lies the snake                           */
+/*                   And the sun in my disgrace                     */
+/*                          Boiling heat                            */
+/*                         Summer stench                            */
+/*                Neath the black, the sky looks dead               */
+/*                          Call my name                            */
+/*                        Through the cream                         */
+/*                  And I'll hear you scream again                  */
 /*                           Stuttering                             */
 /*                          Cold and damp                           */
 /*                 Steal the warm wind, tired friend                */
@@ -70,7 +82,7 @@ struct hashMapItem {
 
 struct HashMap {
     LinkedList *items;
-    int maxElements;
+    int buckets;
     int elementCount;
 };
 
@@ -108,17 +120,13 @@ struct openFile {
 };
 
 struct operator {
-    char *name;
-    char *prefix;
     void (*functionPointer)(void*); /* guys i think this points or smth idk */ 
     int minArgs;
 };
 
 struct InstructionSet {
-    operator *set;
-    char **prefixes;
-    int count;
-    int prefixCount;
+    HashMap operators;
+    HashMap prefixes;
 };
 
 InstructionSet ValidInstructions;
@@ -167,7 +175,9 @@ void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*
 
 void dummy() { float f=0,*fp; fp=&f; printf("%f",*fp); } /* only needed for retarded systems like turbo c to trick it into bringing in float libs */
 
-void toggleDebugMode() {
+void cry(char *msg) { puts(msg); exit(2847172); }
+
+void snadmwithc() {
     debugMode = !debugMode;
     if (debugMode) { puts("debug mode enabled"); }
     else { puts("debug mode disabled"); }
@@ -179,114 +189,6 @@ char *strdup(const char *string) {
     if (!final) return NULL;
     memcpy(final, string, len);
     return final;
-}
-
-unsigned long hash(unsigned char *str) { /* wonderful lil algorithm called djb2. written by someone much smarter than me. used in programming for ages. no fuckign clue how it works. */
-    unsigned long hashbrick = 5381; int c;
-    while ((c = *str++)) hashbrick = ((hashbrick << 5) + hashbrick) + c; /* hash * 33 + c */
-    return hashbrick;
-}
-
-void freeAndPrint(char *allocated) { printf("%s", allocated); free(allocated); }
-
-void freeInstruction(instruction *inst) {
-    int i;
-    if (inst == NULL) return;
-    DEBUG_PRINTF("freeing %s instruction\n", inst->operation);
-    free(inst->operation);
-    for (i = 0; i < inst->argumentCount; i++) {
-        DEBUG_PRINTF("freeing %s arg\n", inst->arguments[i]); free(inst->arguments[i]);
-    }
-    free(inst->arguments);
-    if (inst->prefix != NULL) free(inst->prefix);
-    free(inst);
-}
-
-void freeVariable(variable *var) { if (var->type == STR && var->data.str) { free(var->data.str); } free(var); }
-void freeLinkedList(LinkedList *lis) { listItem *current = lis->first; while (current != NULL) { listItem *next = current->next; free(current); current = next; }}
-void freeList(LinkedList *lis) { int i; listItem *current = lis->first; for (i = 0; i < lis->elements; i++) { listItem *next = current->next; freeVariable((variable *)current->data); current = next; } freeLinkedList(lis); free(lis); }
-void freeOperator(operator op) { if (op.name != NULL) { DEBUG_PRINTF("freeing %s operator\n", op.name); free(op.name); } if (op.prefix != NULL) { DEBUG_PRINTF("freeing %s prefix\n", op.prefix); free(op.prefix); }}
-void freeInstructionSet(InstructionSet isa) { int i; if (isa.set != NULL) { for (i = 0; i < isa.count; i++) { freeOperator(isa.set[i]); } free(isa.set); } if (isa.prefixes != NULL) { for (i = 0; i < isa.prefixCount; i++) { free(isa.prefixes[i]); } free(isa.prefixes); }}
-void freeHashMap(HashMap map) {
-    int i;
-    if (map.items == NULL) return;
-    for (i = 0; i < map.maxElements; i++) {
-        listItem *current = map.items[i].first;
-        if (current == NULL) continue;
-        while (current != NULL) {
-            hashMapItem *item = (hashMapItem *)current->data;
-            DEBUG_PRINTF("freeing %s key\n", item->key);
-            free(item->key); 
-            if (item->freeRoutine) item->freeRoutine(item->data); 
-            free(item);
-            current = current->next;
-        }
-        freeLinkedList(&map.items[i]); 
-    }
-    free(map.items);
-}
-void freeFile(openFile file) {
-    int i;
-    DEBUG_PRINT("freeing instructions\n");
-    if (file.instructions != NULL) { for (i = 0; i < file.instructionCount; i++) { freeInstruction(file.instructions[i]); } free(file.instructions); }
-    DEBUG_PRINT("freeing vars\n");
-    freeHashMap(file.variables);
-    DEBUG_PRINT("freeing labels\n");
-    freeHashMap(file.labels);
-    DEBUG_PRINT("freeing lists\n");
-    freeHashMap(file.lists);
-    if (file.path != NULL) { free(file.path); }
-}
-
-void cleanFile(openFile *file) { /* cleans a file for re-execution */
-    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels);
-    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
-}
-
-char *stripSemicolon(char *input) { int position; char *string = strdup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
-char *lowerize(char *input) { int i, len; char *string = strdup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
-void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }}
-void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
-
-int findNumberArgs(char *instruction, InstructionSet isa) { int i; for (i = 0; i < isa.count; i++) { if (strcmp(isa.set[i].name, instruction) == 0) { return isa.set[i].minArgs; }} return -1; }
-
-void cry(char *msg) { puts(msg); exit(2847172); }
-void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
-    if (fatal) {
-        printf("Fatal error: %s of code %d\nPress 'enter' to quit...\n", errorMsg, errCode);
-        freeFile(*file);
-        freeInstructionSet(ValidInstructions);
-        getchar();
-        exit(errCode); /* theres no real errcodes but we're gonna pretend we do */
-    } else {
-        char string[512];
-        sprintf(string, "A non-fatal error %d (%s) has occurred at line %d. \nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg, file->programCounter);
-        cleanFile(file);
-        beginCommandLine(string, file);
-    }
-}
-
-int trueOrFalse(char *string) {
-    char *check = lowerize(string); int value = 0;
-    char *check = lowerize(string); int value = 0;
-    if (strcmp(check, "true") == 0) { value = 1; }
-    else if (strcmp(check, "false") == 0) { value = 0; }
-    free(check);
-    return value;
-}
-
-void set_variable_value(variable *var, int type, char *value, double num, int bool) { /* too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3 */
-    if (var->type == STR) free(var->data.str); 
-    var->data.str = NULL;
-    if (type == NUM) { var->data.num = num; }
-    else if (type == BOOL) { var->data.bool = bool; }
-    else if (type == STR) {
-        if (!value) cry("No value passed in!\n");
-        var->data.str = strdup(value);
-        if (var->data.str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
-    }
-    var->type = type;
-    DEBUG_PRINTF("\nvariable now has value %s, %f, %d\n", value, (float)num, bool);
 }
 
 listItem *traverseList(int desiredIndex, int currentIndex, listItem *pointOfList) {
@@ -312,6 +214,227 @@ void insertItem(listItem *new, listItem *prev, listItem *next) { /* sandwiches i
     new->prev = prev; new->next = next;
 }
 
+unsigned long hash(unsigned char *str) { /* wonderful lil algorithm called djb2. written by someone much smarter than me. used in programming for ages. no fuckign clue how it works. */
+    unsigned long brickofhash = 5381; int c;
+    while ((c = *str++)) brickofhash = ((brickofhash << 5) + brickofhash) + c; /* hash * 33 + c */
+    return brickofhash;
+}
+
+HashMap create_hashmap(int buckets) { /* genuinely one of the only times java might be good for shit ngl */
+    HashMap new;
+    new.buckets = buckets;
+    new.elementCount = 0;
+    new.items = (LinkedList *)callocate(buckets, sizeof(LinkedList));
+    return new;
+}
+
+LinkedList *grabHashMapLocation(HashMap *map, char *key) {
+    unsigned long index = hash((unsigned char *)key) % map->buckets;
+    DEBUG_PRINTF("index: %lu", index);
+    return &map->items[index];
+}
+
+void changeHashMap(HashMap *map, int extensionCount) {
+    int i, newMax = map->buckets + extensionCount; HashMap temp; 
+    if (extensionCount == 0 || map->buckets + extensionCount < map->elementCount) return;
+    temp = create_hashmap(newMax);
+    for (i = 0; i < map->buckets; i++) {
+        listItem *loc = map->items[i].first;
+        if (loc == NULL) { continue; } /* if there ain't a first element, there ain't no fuckin' data */
+        while (loc != NULL) {
+            hashMapItem *current = loc->data; listItem *next = loc->next;
+            LinkedList *newSpot = grabHashMapLocation(&temp, current->key);
+            loc->next = NULL; loc->prev = NULL;
+            if (newSpot->first == NULL) newSpot->first = loc; 
+            else { insertItem(loc, newSpot->last, NULL); }
+            newSpot->last = loc;
+            loc = next;
+        }
+    }
+    map->buckets = newMax;
+    free(map->items);
+    map->items = temp.items; map->buckets = newMax;
+}
+
+listItem *grabHashMapItem(HashMap *map, char *key) {
+    listItem *current = grabHashMapLocation(map, key)->first;
+    while (1) { 
+        hashMapItem *check;
+        if (current == NULL) return NULL;
+        check = (hashMapItem *)current->data; 
+        if (check->key != NULL && !strcmp(check->key, key)) { DEBUG_PRINTF("found %s key\n", check->key); return current;}
+        current = current->next; 
+    } 
+}
+
+void *searchHashMap(HashMap *map, char *key) {
+    listItem *loc = grabHashMapItem(map, key);
+    if (loc != NULL) return ((hashMapItem *)loc->data)->data;
+    else return NULL;
+}
+
+void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*)) {
+    LinkedList *location = grabHashMapLocation(map, key); listItem *newListItem; hashMapItem *newItem;
+    if (map->buckets < (map->elementCount + (map->elementCount / 4))) {
+        changeHashMap(map, map->buckets); 
+        addItemToMap(map, item, key, freeRoutine);
+        return;
+    }
+    newListItem = (listItem *)callocate(1, sizeof(listItem));
+    newItem = (hashMapItem *)mallocate(sizeof(hashMapItem));
+    newItem->data = item; newItem->key = strdup(key); newItem->freeRoutine = freeRoutine;
+    newListItem->data = newItem;
+    DEBUG_PRINTF("added item with key %s\n", key);
+    if (location->first == NULL) { location->first = newListItem; }
+    else { insertItem(newListItem, location->last, NULL); }
+    location->last = newListItem;
+    map->elementCount += 1; 
+}
+
+void deleteItemFromMap(HashMap *map, char *key) {
+    listItem *nuked = grabHashMapItem(map, key); LinkedList *point = grabHashMapLocation(map, key);
+    DEBUG_PRINT(((hashMapItem *)nuked->data)->key); free(((hashMapItem *)nuked->data)->key);
+    if (((hashMapItem *)nuked->data)->freeRoutine != NULL) ((hashMapItem *)nuked->data)->freeRoutine(((hashMapItem *)nuked->data)->data);
+    free(nuked->data); 
+    if (point->first == nuked) point->first = nuked->next != NULL ? nuked->next : NULL;
+    if (point->last == nuked) point->last = nuked->prev != NULL ? nuked->prev : NULL;
+    deleteItem(nuked); 
+    map->elementCount -= 1;
+}
+
+void freeAndPrint(char *allocated) { printf("%s", allocated); free(allocated); }
+
+void freeInstruction(instruction *inst) {
+    int i;
+    if (inst == NULL) return;
+    DEBUG_PRINTF("freeing %s instruction\n", inst->operation);
+    free(inst->operation);
+    for (i = 0; i < inst->argumentCount; i++) {
+        DEBUG_PRINTF("freeing %s arg\n", inst->arguments[i]); free(inst->arguments[i]);
+    }
+    free(inst->arguments);
+    if (inst->prefix != NULL) free(inst->prefix);
+    free(inst);
+}
+
+void freeVariable(variable *var) { if (var->type == STR && var->data.str) { free(var->data.str); } free(var); }
+void freeLinkedList(LinkedList *lis) { listItem *current = lis->first; while (current != NULL) { listItem *next = current->next; free(current); current = next; }}
+void freeList(LinkedList *lis) { int i; listItem *current = lis->first; for (i = 0; i < lis->elements; i++) { listItem *next = current->next; freeVariable((variable *)current->data); current = next; } freeLinkedList(lis); free(lis); }
+void freeHashMap(HashMap map) { /* Noli manere in memoria - Saevam iram et dolorem - Ferum terribile fatum - Ille iterum veniet */
+    int i;
+    if (map.items == NULL) return;
+    for (i = 0; i < map.buckets; i++) {
+        listItem *current = map.items[i].first;
+        if (current == NULL) continue;
+        while (current != NULL) {
+            hashMapItem *item = (hashMapItem *)current->data;
+            DEBUG_PRINTF("freeing %s key\n", item->key);
+            free(item->key); 
+            if (item->freeRoutine) item->freeRoutine(item->data); 
+            free(item);
+            current = current->next;
+        }
+        freeLinkedList(&map.items[i]); 
+    }
+    free(map.items);
+}
+void freeInstructionSet(InstructionSet *isa) { freeHashMap(isa->operators); freeHashMap(isa->prefixes); }
+void freeFile(openFile file) {
+    int i;
+    DEBUG_PRINT("freeing instructions\n");
+    if (file.instructions != NULL) { for (i = 0; i < file.instructionCount; i++) { freeInstruction(file.instructions[i]); } free(file.instructions); }
+    DEBUG_PRINT("freeing vars\n");
+    freeHashMap(file.variables);
+    DEBUG_PRINT("freeing labels\n");
+    freeHashMap(file.labels);
+    DEBUG_PRINT("freeing lists\n");
+    freeHashMap(file.lists);
+    if (file.path != NULL) { free(file.path); }
+}
+
+void cleanFile(openFile *file) { /* cleans a file for re-execution */
+    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels);
+    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
+}
+
+void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
+    if (fatal) { /* veni, veni, venias; ne me mori facias */
+        printf("Fatal error: %s of code %d\nPress 'enter' to quit...\n", errorMsg, errCode);
+        freeFile(*file);
+        freeInstructionSet(&ValidInstructions);
+        getchar();
+        exit(errCode); /* theres no real errcodes but we're gonna pretend we do */
+    } else {
+        char string[512];
+        sprintf(string, "A non-fatal error %d (%s) has occurred at line %d. \nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg, file->programCounter);
+        cleanFile(file);
+        beginCommandLine(string, file);
+    }
+}
+
+char *stripSemicolon(char *input) { int position; char *string = strdup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(char *input) { int i, len; char *string = strdup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
+void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }}
+void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
+
+void convertLiteralNewLineToActualNewLine(char *string) {
+    int i, sizeOf = strlen(string);
+    for (i = 1; i < sizeOf; i++) { 
+        if ((string[i] == 'n' || string[i] == 'r')&& string[i - 1] == '\\') { 
+            string[i - 1] = '\n';
+            memcpy(string + i, string + 1 + i, sizeOf - i);
+            i -= 1; 
+        }
+    } 
+}
+
+char *joinStringsSentence(char **strings, int stringCount, int offset) {
+    char *finalString = NULL; int i, sizeOf = 0;
+    if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
+    for (i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
+    finalString = (char *)callocate(sizeOf + 1, sizeof(char)); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
+    for (i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} /* fuck yo optimization */
+    convertLiteralNewLineToActualNewLine(finalString);
+    return finalString;
+}
+
+char *buildStringFromInstruction(instruction *inst) {
+    char *joined;
+    if (inst->prefix != NULL) { char **temp; temp = (char **)mallocate(sizeof(char *) * 2); temp[0] = inst->prefix; temp[1] = inst->operation; joined = joinStringsSentence(temp, 2, 0); free(temp); }
+    else { joined = strdup(inst->operation); }
+    return joined;
+}
+
+int findNumberArgs(instruction *inst, InstructionSet isa) { 
+    char *temp = buildStringFromInstruction(inst);
+    operator *search = ((operator *)searchHashMap(&isa.operators, temp));
+    free(temp); 
+    if (search != NULL) { return search->minArgs; } return -1; 
+}
+
+int trueOrFalse(char *string) {
+    char *check = lowerize(string); int value = 0;
+    char *check = lowerize(string); int value = 0;
+    if (strcmp(check, "true") == 0) { value = 1; }
+    else if (strcmp(check, "false") == 0) { value = 0; }
+    free(check);
+    return value;
+}
+
+void set_variable_value(variable *var, int type, char *value, double num, int bool) { /* too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3 */
+    if (var->type == STR) free(var->data.str); 
+    var->data.str = NULL;
+    if (type == NUM) { var->data.num = num; }
+    else if (type == BOOL) { var->data.bool = bool; }
+    else if (type == STR) {
+        if (!value) cry("No value passed in!\n");
+        var->data.str = strdup(value);
+        if (var->data.str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
+    }
+    var->type = type;
+    DEBUG_PRINTF("\nvariable now has value %s, %f, %d\n", value, (float)num, bool);
+}
+
 instruction *add_instruction(char *inst, char *arguments[], char *prefix, int args) {
     int i; char *ins = stripSemicolon(inst);
     instruction *instruct = (instruction *)mallocate(sizeof(instruction));
@@ -325,39 +448,14 @@ instruction *add_instruction(char *inst, char *arguments[], char *prefix, int ar
     return instruct;
 }
 
-operator create_operator(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { /* CONSTRUCTORS!? OBJECTS!? IN MY C CODE!? WHAT THE FUCK IS THIS, JAVA!? */
-    operator op;
-    op.name = strdup(name);
-    op.prefix = (prefix != NULL) ? strdup(prefix) : NULL; 
-    op.functionPointer = functionPointer; 
-    op.minArgs = minimumArguments;
-    return op;
-}
-
-HashMap create_hashmap(int maxElements) { /* genuinely one of the only times java might be good for shit ngl */
-    HashMap new;
-    new.maxElements = maxElements;
-    new.elementCount = 0;
-    new.items = (LinkedList *)callocate(maxElements, sizeof(LinkedList));
-    return new;
-}
-
-void addOperator(operator *op, InstructionSet *isa) {
-    isa->set = (operator *)reallocate(isa->set, (isa->count + 1) * sizeof(operator));
-    isa->set[isa->count] = *op;
-    isa->count += 1;
-}
-
-void addOperatorSet(operator *ops, InstructionSet *isa, int count) {
-    isa->set = (operator *)reallocate(isa->set, (isa->count + count) * sizeof(operator));
-    memcpy(isa->set + isa->count, ops, count * sizeof(operator));
-    isa->count += count;
-}
-
-void addPrefix(char *prefix, InstructionSet *isa) {
-    isa->prefixes = (char **)reallocate(isa->prefixes, (isa->prefixCount + 1) * sizeof(char *));
-    isa->prefixes[isa->prefixCount] = strdup(prefix);
-    isa->prefixCount += 1;
+void addOperator(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { /* CONSTRUCTORS!? OBJECTS!? IN MY C CODE!? WHAT THE FUCK IS THIS, JAVA!? */
+    operator *op = (operator *)mallocate(sizeof(operator)); char *joined;
+    op->functionPointer = functionPointer; 
+    op->minArgs = minimumArguments;
+    if (prefix != NULL) { char **temp; temp = (char **)mallocate(sizeof(char *) * 2); temp[0] = prefix; temp[1] = name; joined = joinStringsSentence(temp, 2, 0); free(temp); }
+    else { joined = strdup(name); }
+    addItemToMap(&ValidInstructions.operators, op, joined, free);
+    free(joined);
 }
 
 void varcpy(variable *dest, variable *src) { 
@@ -380,7 +478,9 @@ void appendElementToList(LinkedList *li, variable var) {
     new->data = (variable *)callocate(1, sizeof(variable));
     new->prev = NULL; new->next = NULL;
     varcpy((variable *)new->data, &var);
-    if (li->elements == 0) { li->first = new; }
+    if (li->elements == 0) { 
+        li->first = new; 
+    }
     else insertItem(new, li->last, NULL);
     li->last = new; li->elements += 1;
 }
@@ -428,63 +528,6 @@ char *stringFromVar(variable var) {
     else { return NULL; }
 }
 
-void changeHashMap(HashMap *map, int extensionCount) {
-    int i, newMax = map->maxElements + extensionCount; HashMap temp; 
-    if (extensionCount == 0 || map->maxElements + extensionCount < map->elementCount) return;
-    temp = create_hashmap(newMax);
-    for (i = 0; i < map->maxElements; i++) {
-        listItem *loc = map->items[i].first;
-        if (loc == NULL) { continue; } /* if there ain't a first element, there ain't no fuckin' data */
-        while (loc != NULL) {
-            hashMapItem *current = loc->data; listItem *next = loc->next;
-            loc->next = NULL; loc->prev = NULL;
-            addItemToMap(&temp, current->data, current->key, current->freeRoutine);
-            free(current->key); free(current);
-            free(loc); loc = next;
-        }
-    }
-    map->maxElements = newMax;
-    free(map->items);
-    map->items = temp.items; map->maxElements = newMax;
-}
-
-void *searchHashMap(HashMap *map, char *key) {
-    unsigned long index = hash((unsigned char *)key) % map->maxElements;
-    listItem *current = map->items[index].first;
-    hashMapItem *check;
-    if (current == NULL) { DEBUG_PRINTF("aint shit here (%lu, %d)", hash((unsigned char *)key), (int)index); return NULL; }
-    check = (hashMapItem *)current->data;
-    while (strcmp(check->key, key)) {
-        if (current == NULL) return NULL; /* it's not gonna be there */
-        check = (hashMapItem *)current->data;
-        current = current->next;
-    } 
-    return check->data;
-}
-
-void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*)) {
-    unsigned long index = hash((unsigned char *)key) % map->maxElements;
-    listItem *prev, *dataLocation = map->items[index].first;
-    if (searchHashMap(map, key) != NULL) return; 
-    if (map->maxElements < map->elementCount + 1) {
-        changeHashMap(map, 10); /* 10 just to give some headroom */
-        addItemToMap(map, item, key, freeRoutine);
-        return;
-    }
-    while (dataLocation != NULL) { prev = dataLocation; dataLocation = dataLocation->next; } 
-    if (dataLocation == NULL) {
-        hashMapItem *newItem;
-        dataLocation = (listItem *)callocate(1, sizeof(listItem));
-        dataLocation->data = (hashMapItem *)mallocate(sizeof(hashMapItem));
-        newItem = (hashMapItem *)dataLocation->data;
-        newItem->data = item; newItem->key = strdup(key); newItem->freeRoutine = freeRoutine;
-        DEBUG_PRINTF("added item with key %s in index %lu\n", key, index);
-    }
-    if (map->items[index].first == NULL) { map->items[index].first = dataLocation; }
-    else { prev->next = dataLocation; }
-    map->elementCount += 1; 
-}
-
 void batchAddToMap(HashMap *map, void **items, char **keys, void (*freeRoutine)(void*), int itemCount) {
     int i;
     for (i = 0; i < itemCount; i++) {
@@ -494,7 +537,7 @@ void batchAddToMap(HashMap *map, void **items, char **keys, void (*freeRoutine)(
 
 void preprocessLabels(openFile *new) {
     int i;
-    new->labels = create_hashmap(new->labels.maxElements); 
+    new->labels = create_hashmap(new->labels.buckets); 
     for (i = 0; i < new->instructionCount; i++) {
         if (strcmp(new->instructions[i]->operation, "label") == 0) { 
             int *location = (int *)mallocate(sizeof(int));
@@ -560,7 +603,7 @@ instruction *parseInstructions(char *string, InstructionSet isa) {
     instruction *new; 
     lowerizeInPlace(tokenized[index]); 
     while (strcmp(tokenized[index], "please") == 0) { index += 1; lowerizeInPlace(tokenized[index]);  }
-    for (i = 0; i < isa.prefixCount; i++) { if (strcmp(tokenized[index], isa.prefixes[i]) == 0) { prefix = tokenized[index]; index += 1; lowerizeInPlace(tokenized[index]); break; }}
+    if (searchHashMap(&isa.prefixes, tokenized[index]) != NULL) { prefix = tokenized[index]; index += 1; lowerizeInPlace(tokenized[index]); }
     lowerizeInPlace(tokenized[index]); operation = tokenized[index]; index += 1;
     argc = arrCount - index; 
     new = add_instruction(operation, tokenized + index, prefix, argc);
@@ -623,7 +666,7 @@ openFile openSimasFile(const char path[]) {
             new.instructions = (instruction **)reallocate(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
             if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
             new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
-            if (strcmp(new.instructions[new.instructionCount]->operation, "label") == 0 && new.instructions[new.instructionCount]->prefix == NULL) new.labels.maxElements += 1;
+            if (strcmp(new.instructions[new.instructionCount]->operation, "label") == 0 && new.instructions[new.instructionCount]->prefix == NULL) new.labels.buckets += 1;
             new.instructionCount += 1;
         }
         
@@ -661,17 +704,17 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
             } else { 
                 printf("invalid command\n"); 
             }
-        } else if (findNumberArgs(inst->operation, ValidInstructions) == -1 && strchr(inst->operation, '@') == NULL) {
+        } else if (findNumberArgs(inst, ValidInstructions) == -1 && strchr(inst->operation, '@') == NULL) {
             printf("invalid instruction\n"); freeInstruction(inst); free(value); continue;
         } else {
-            if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst->operation, ValidInstructions)) {
+            if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst, ValidInstructions)) {
                 passed->instructions = (instruction **)reallocate(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
                 if (passed->instructions == NULL) { printf("**FATAL ERROR**:\nReallocation failed!\n"); free(value); break; }
                 passed->instructions[passed->instructionCount] = add_instruction(inst->operation, inst->arguments, inst->prefix, inst->argumentCount);
                 passed->instructionCount += 1;
-                if (strcmp(inst->operation, "label") == 0 && inst->prefix == NULL) passed->labels.maxElements += 1;
+                if (strcmp(inst->operation, "label") == 0 && inst->prefix == NULL) passed->labels.buckets += 1;
                 printf("ok\n");
-            } else if (inst->argumentCount < findNumberArgs(inst->operation, ValidInstructions)) {
+            } else if (inst->argumentCount < findNumberArgs(inst, ValidInstructions)) {
                 printf("too little arguments for instruction\n");
             } else {
                 printf("code must end with a semicolon\n");
@@ -686,30 +729,9 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
     
     freeHashMap(ValidCommands);
     freeFile(*passed);
-    freeInstructionSet(ValidInstructions);
+    freeInstructionSet(&ValidInstructions);
 
     exit(0);
-}
-
-void convertLiteralNewLineToActualNewLine(char *string) {
-    int i, sizeOf = strlen(string);
-    for (i = 1; i < sizeOf; i++) { 
-        if ((string[i] == 'n' || string[i] == 'r')&& string[i - 1] == '\\') { 
-            string[i - 1] = '\n';
-            memcpy(string + i, string + 1 + i, sizeOf - i);
-            i -= 1; 
-        }
-    } 
-}
-
-char *joinStringsSentence(char **strings, int stringCount, int offset) {
-    char *finalString = NULL; int i, sizeOf = 0;
-    if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
-    for (i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
-    finalString = (char *)callocate(sizeOf + 1, sizeof(char)); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
-    for (i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} /* fuck yo optimization */
-    convertLiteralNewLineToActualNewLine(finalString);
-    return finalString;
 }
 
 int checkVarTruthiness(variable *var) {
@@ -824,10 +846,15 @@ void jumpConditionally(int *location, variable *var, int *programCounter, int fl
     if (allowed) labelJump(location, programCounter);
 }
 
+variable *createVarIfNotFound(HashMap *varMap, char *name) {
+    variable *var = searchHashMap(varMap, name);
+    if (!var) { var = (variable *)callocate(1, sizeof(variable)); addItemToMap(varMap, var, name, (void (*)(void *))freeVariable); var = searchHashMap(varMap, name); }
+    return var; 
+}
+
 void standardMath(HashMap *varMap, char **arguments, char operation) {
     double op2 = 0;
-    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]); 
-    if (!var1) { var1 = (variable *)mallocate(sizeof(variable)); addItemToMap(varMap, var1, arguments[1], (void (*)(void *))freeVariable); var1 = searchHashMap(varMap, arguments[1]); }
+    variable *var1 = createVarIfNotFound(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]); 
     if (var1->type != NUM) cry("You can only do math on a 'num' type variable!");
     if (var2 == NULL) { op2 = atof(arguments[2]); }
     else if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
@@ -839,12 +866,6 @@ void standardMath(HashMap *varMap, char **arguments, char operation) {
         case '/': if (op2 == 0.0) {cry("div by zero error\n");} else{ var1->data.num /= op2;} break; /* this is when we tell the user to eat shit and die, nerd */
         default: var1->data.num = 0;
     }
-}
-
-variable *createVarIfNotFound(HashMap *varMap, char *name) {
-    variable *var = searchHashMap(varMap, name);
-    if (!var) { var = (variable *)callocate(1, sizeof(variable)); addItemToMap(varMap, var, name, (void (*)(void *))freeVariable); var = searchHashMap(varMap, name); }
-    return var; 
 }
 
 void variableSet(HashMap *varMap, char **arguments, int argumentCount) {
@@ -869,8 +890,7 @@ void grabTypeFromVar(variable check, variable *var) {
 }
 
 void compareNums(HashMap *varMap, char **arguments, char operation) {
-    variable *var1 = searchHashMap(varMap, arguments[1]);
-    variable *var2 = searchHashMap(varMap, arguments[2]);
+    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]);
     double operand1 = 0; double operand2 = 0;
     if (var1 == NULL) { cry("No variable!"); }
     else if (var1->type != NUM) { cry("Operand must be of \"num\" type!\n"); }
@@ -891,8 +911,7 @@ void compareNums(HashMap *varMap, char **arguments, char operation) {
 }
 
 void compareBools(HashMap *varMap, char **arguments, char operation, char flip) {
-    variable *var1 = searchHashMap(varMap, arguments[1]);
-    variable *var2 = searchHashMap(varMap, arguments[2]);
+    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]);
     int operand1 = 0; int operand2 = 0;
     if (var1 == NULL) { cry("No variable!"); } /* can't save SHIT if you dont have a variable */
     else { operand1 = checkVarTruthiness(var1); }
@@ -963,10 +982,12 @@ void unFormatList(LinkedList *li, char *string) {
 }
 
 void loadList(HashMap *listMap, char *name, char *path) {
-    LinkedList *li = searchHashMap(listMap, name), *new; char *temp = readFile(path);
-    if (li != NULL) { freeList(li); }
-    new = (LinkedList *)callocate(1, sizeof(LinkedList)); addItemToMap(listMap, new, name, (void (*)(void *))freeList); li = searchHashMap(listMap, name);
-    unFormatList(li, temp); free(temp);
+    LinkedList *new = searchHashMap(listMap, name); char *temp = readFile(path);
+    if (new != NULL) { deleteItemFromMap(listMap, name); } 
+    new = (LinkedList *)callocate(1, sizeof(LinkedList)); 
+    addItemToMap(listMap, new, name, (void (*)(void *))freeList); 
+    new = searchHashMap(listMap, name);
+    unFormatList(new, temp); free(temp);
 }
 
 void listAppendConstant(LinkedList *li, char **arguments, int *argumentCount) {
@@ -1000,7 +1021,7 @@ void fio_write(openFile *file) { freeAndWrite(file->instructions[file->programCo
 void fio_writev(openFile *file) { writeFromVar(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), file->instructions[file->programCounter]->arguments[0]); }
 /* misc             */
 void etc_not(openFile *file) { negateBoolean(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]));  }
-void etc_quit(openFile *file) { freeFile(*file); freeInstructionSet(ValidInstructions); exit(0); }
+void etc_quit(openFile *file) { freeFile(*file); freeInstructionSet(&ValidInstructions); exit(0); }
 /* jumps            */
 void jmp_jump(openFile *file) { labelJump(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), &file->programCounter); }
 void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), &file->programCounter, 0); }
@@ -1085,12 +1106,12 @@ char *cmd_edit(instruction *inst, openFile *file) {
             printf("Enter new instruction: ");
             out = grabUserInput(256); temporary = stripSemicolon(out); strip(temporary, ' ');
             instruct = parseInstructions(out, ValidInstructions);
-            if (strcmp(temporary, "") != 0 && strchr(out, ';') && instruct->argumentCount >= findNumberArgs(instruct->operation, ValidInstructions)) { 
+            if (strcmp(temporary, "") != 0 && strchr(out, ';') && instruct->argumentCount >= findNumberArgs(instruct, ValidInstructions)) { 
                 freeInstruction(file->instructions[atoi(inst->arguments[0]) - 1]);
                 file->instructions[atoi(inst->arguments[0]) - 1] = add_instruction(instruct->operation, instruct->arguments, instruct->prefix, instruct->argumentCount);
             } else if (strchr(out, ';') == NULL) {
                 printf("code must end with a semicolon\n");
-            } else if (instruct->argumentCount < findNumberArgs(instruct->operation, ValidInstructions)) {
+            } else if (instruct->argumentCount < findNumberArgs(instruct, ValidInstructions)) {
                 printf("too little arguments for instruction\n");
             }
             freeInstruction(instruct); free(temporary); free(out);
@@ -1124,18 +1145,13 @@ char *cmd_run(instruction *inst, openFile *file) {
 }
 
 void executeInstruction(openFile *cur) { /* all of these are defined up here so this function can operate independently of any files */
-    int i;
-    DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", cur->instructions[cur->programCounter]->operation, cur->programCounter);
+    operator *found; char *string;
     if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return;
-    for (i = 0; i < ValidInstructions.count; i++) { 
-        if (strcmp(ValidInstructions.set[i].name, cur->instructions[cur->programCounter]->operation) == 0) {
-            if (ValidInstructions.set[i].prefix != NULL) {
-                if (cur->instructions[cur->programCounter]->prefix == NULL) continue;
-                if (strcmp(ValidInstructions.set[i].prefix, cur->instructions[cur->programCounter]->prefix) != 0) continue;
-            }
-            (ValidInstructions.set[i].functionPointer)(cur);
-        }
-    }
+    string = buildStringFromInstruction(cur->instructions[cur->programCounter]);
+    DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", string, cur->programCounter);
+    found = searchHashMap(&ValidInstructions.operators, string);
+    if (found != NULL) { (found->functionPointer)(cur); }
+    free(string);
 }
 
 void executeFile(openFile *current, int doFree) {
@@ -1146,54 +1162,52 @@ void executeFile(openFile *current, int doFree) {
 
 void setUpStdlib(void) {
     int count = 44;
-    operator *ops = (operator *)mallocate(sizeof(operator) * count);
-    addPrefix("list", &ValidInstructions);
-    ops[ 0] = create_operator("print", NULL, (void(*)(void*))con_printv, 1); 
-    ops[ 1] = create_operator("println", NULL, (void(*)(void*))con_println, 0);
-    ops[ 2] = create_operator("prints", NULL, (void(*)(void*))con_prints, 0); 
-    ops[ 3] = create_operator("printc", NULL, (void(*)(void*))con_printc, 1); 
-    ops[ 4] = create_operator("read", NULL, (void(*)(void*))fio_read, 2); 
-    ops[ 5] = create_operator("write", NULL, (void(*)(void*))fio_write, 2);
-    ops[ 6] = create_operator("writev", NULL, (void(*)(void*))fio_writev, 2); 
-    ops[ 7] = create_operator("not", NULL, (void(*)(void*))etc_not, 1);
-    ops[ 8] = create_operator("quit", NULL, (void(*)(void*))etc_quit, 1);
-    ops[ 9] = create_operator("add", NULL, (void(*)(void*))mat_add, 3);
-    ops[10] = create_operator("sub", NULL, (void(*)(void*))mat_sub, 3);
-    ops[11] = create_operator("mul", NULL, (void(*)(void*))mat_mul, 3);
-    ops[12] = create_operator("div", NULL, (void(*)(void*))mat_div, 3);
-    ops[13] = create_operator("set", NULL, (void(*)(void*))var_set, 2);
-    ops[14] = create_operator("type", NULL, (void(*)(void*))var_type, 2);
-    ops[15] = create_operator("conv", NULL, (void(*)(void*))var_conv, 2);
-    ops[16] = create_operator("copy", NULL, (void(*)(void*))var_copy, 2);
-    ops[17] = create_operator("gt", NULL, (void(*)(void*))cmp_gt, 3); 
-    ops[18] = create_operator("gte", NULL, (void(*)(void*))cmp_gte, 3); 
-    ops[19] = create_operator("st", NULL, (void(*)(void*))cmp_st, 3); 
-    ops[20] = create_operator("ste", NULL, (void(*)(void*))cmp_ste, 3); 
-    ops[21] = create_operator("eqv", NULL, (void(*)(void*))cmp_eqv, 3); 
-    ops[22] = create_operator("neqv", NULL, (void(*)(void*))cmp_neqv, 3);
-    ops[23] = create_operator("eqc", NULL, (void(*)(void*))cmp_eqc, 3); 
-    ops[24] = create_operator("neqc", NULL, (void(*)(void*))cmp_neqc, 3);
-    ops[25] = create_operator("and", NULL, (void(*)(void*))cmp_and, 3); 
-    ops[26] = create_operator("nand", NULL, (void(*)(void*))cmp_nand, 3);
-    ops[27] = create_operator("or", NULL, (void(*)(void*))cmp_or, 3); 
-    ops[28] = create_operator("nor", NULL, (void(*)(void*))cmp_nor, 3);
-    ops[29] = create_operator("xor", NULL, (void(*)(void*))cmp_xor, 3);
-    ops[30] = create_operator("jump", NULL, (void(*)(void*))jmp_jump, 1);
-    ops[31] = create_operator("jumpv", NULL, (void(*)(void*))jmp_jumpv, 2); 
-    ops[32] = create_operator("jumpnv", NULL, (void(*)(void*))jmp_jumpnv, 2);
-    ops[33] = create_operator("del", "list", (void(*)(void*))lis_del, 1); 
-    ops[34] = create_operator("appv", "list", (void(*)(void*))lis_appv, 2); 
-    ops[35] = create_operator("show", "list", (void(*)(void*))lis_show, 0); 
-    ops[36] = create_operator("new", "list", (void(*)(void*))lis_new, 0); 
-    ops[37] = create_operator("upv", "list", (void(*)(void*))lis_upv, 3); 
-    ops[38] = create_operator("acc", "list", (void(*)(void*))lis_acc, 2); 
-    ops[39] = create_operator("load", "list", (void(*)(void*))lis_load, 2); 
-    ops[40] = create_operator("len", "list", (void(*)(void*))lis_len, 1); 
-    ops[41] = create_operator("dump", "list", (void(*)(void*))lis_dump, 1); 
-    ops[42] = create_operator("upc", "list", (void(*)(void*))lis_upc, 3); 
-    ops[43] = create_operator("appc", "list", (void(*)(void*))lis_appc, 2); 
-    addOperatorSet(ops, &ValidInstructions, count);
-    free(ops);
+    ValidInstructions.operators = create_hashmap(count); ValidInstructions.prefixes = create_hashmap(1);
+    addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
+    addOperator("print", NULL, (void(*)(void*))con_printv, 1); 
+    addOperator("println", NULL, (void(*)(void*))con_println, 0);
+    addOperator("prints", NULL, (void(*)(void*))con_prints, 0); 
+    addOperator("printc", NULL, (void(*)(void*))con_printc, 1); 
+    addOperator("read", NULL, (void(*)(void*))fio_read, 2); 
+    addOperator("write", NULL, (void(*)(void*))fio_write, 2);
+    addOperator("writev", NULL, (void(*)(void*))fio_writev, 2); 
+    addOperator("not", NULL, (void(*)(void*))etc_not, 1);
+    addOperator("quit", NULL, (void(*)(void*))etc_quit, 1);
+    addOperator("add", NULL, (void(*)(void*))mat_add, 3);
+    addOperator("sub", NULL, (void(*)(void*))mat_sub, 3);
+    addOperator("mul", NULL, (void(*)(void*))mat_mul, 3);
+    addOperator("div", NULL, (void(*)(void*))mat_div, 3);
+    addOperator("set", NULL, (void(*)(void*))var_set, 2);
+    addOperator("type", NULL, (void(*)(void*))var_type, 2);
+    addOperator("conv", NULL, (void(*)(void*))var_conv, 2);
+    addOperator("copy", NULL, (void(*)(void*))var_copy, 2);
+    addOperator("gt", NULL, (void(*)(void*))cmp_gt, 3); 
+    addOperator("gte", NULL, (void(*)(void*))cmp_gte, 3); 
+    addOperator("st", NULL, (void(*)(void*))cmp_st, 3); 
+    addOperator("ste", NULL, (void(*)(void*))cmp_ste, 3); 
+    addOperator("eqv", NULL, (void(*)(void*))cmp_eqv, 3); 
+    addOperator("neqv", NULL, (void(*)(void*))cmp_neqv, 3);
+    addOperator("eqc", NULL, (void(*)(void*))cmp_eqc, 3); 
+    addOperator("neqc", NULL, (void(*)(void*))cmp_neqc, 3);
+    addOperator("and", NULL, (void(*)(void*))cmp_and, 3); 
+    addOperator("nand", NULL, (void(*)(void*))cmp_nand, 3);
+    addOperator("or", NULL, (void(*)(void*))cmp_or, 3); 
+    addOperator("nor", NULL, (void(*)(void*))cmp_nor, 3);
+    addOperator("xor", NULL, (void(*)(void*))cmp_xor, 3);
+    addOperator("jump", NULL, (void(*)(void*))jmp_jump, 1);
+    addOperator("jumpv", NULL, (void(*)(void*))jmp_jumpv, 2); 
+    addOperator("jumpnv", NULL, (void(*)(void*))jmp_jumpnv, 2);
+    addOperator("del", "list", (void(*)(void*))lis_del, 2); 
+    addOperator("appv", "list", (void(*)(void*))lis_appv, 3); 
+    addOperator("show", "list", (void(*)(void*))lis_show, 1); 
+    addOperator("new", "list", (void(*)(void*))lis_new, 1); 
+    addOperator("upv", "list", (void(*)(void*))lis_upv, 4); 
+    addOperator("acc", "list", (void(*)(void*))lis_acc, 3); 
+    addOperator("load", "list", (void(*)(void*))lis_load, 2); 
+    addOperator("len", "list", (void(*)(void*))lis_len, 2); 
+    addOperator("dump", "list", (void(*)(void*))lis_dump, 2); 
+    addOperator("upc", "list", (void(*)(void*))lis_upc, 4); 
+    addOperator("appc", "list", (void(*)(void*))lis_appc, 3); 
 }
 
 void setUpCommands() {
@@ -1231,17 +1245,19 @@ int main(int argc, const char * argv[]) {
 
     setUpStdlib();
 
-    if (argc == 2) { if (strcmp(argv[1], "-d") == 0) { toggleDebugMode(); }};
-
-    if (argc >= 2 && !debugMode) { 
-        if (argc == 3) { if (strcmp(argv[2], "-d") == 0) { toggleDebugMode(); }}
-        new = openSimasFile(argv[1]);
-        executeFile(&new, 1);
+    if (argc >= 2) { 
+        int i, maxIterations; /* support chainloading because it makes testing WAYYYY easier */
+        if (strcmp(argv[argc - 1], "-d") == 0) { maxIterations = argc - 1; snadmwithc(); }
+        else { maxIterations = argc; }
+        for (i = 1; i < maxIterations; i++) {
+            new = openSimasFile(argv[i]);
+            executeFile(&new, 1);
+        }
     } else { 
         beginCommandLine("CMAS (C Simple Assembly) Interpreter.\nWritten by tuvalutorture, Licensed under GNU GPLv3.\nUsing The SIMAS Programming Language, created by Turrnut.\nGitHub repo: https://github.com/tuvalutorture/simas \nType !help for a list of commands.\n", &new); 
     }
 
-    freeInstructionSet(ValidInstructions);
+    freeInstructionSet(&ValidInstructions);
 
     #if ALLOC_DEBUGGING == 1
     fclose(allocatorLog);
@@ -1249,4 +1265,4 @@ int main(int argc, const char * argv[]) {
 
     return 0;
 }
-/* we are the shinglefuckers of bong juice ltd. */
+/* we are the phosphorylated constituents of bong juice ltd. */

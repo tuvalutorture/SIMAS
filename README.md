@@ -7,8 +7,8 @@ License: GPLv3, which is the same as the [original SIMAS repo, which is also lic
 **SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, high level procedural programming language  
 with a syntax that is inspired by the Assembly programming language.<br>
 In SIMAS, each line starts with an instruction, optionally followed by one or more operands, just like Assembly.<br>
-To run a SIMAS program, simply run ```./simas <filename>```. <br>
-Additionally, you can use the ```--debug``` flag to get more info.
+To run a SIMAS program, simply run ```./simas <filename(s)>```. <br>
+Additionally, you can use the ```-d``` flag as the last argument to get more info.
 You can also run just ```./simas``` for the SIMAS command line.
 
 **Additional Notes** <br>
@@ -216,7 +216,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
         * writes a list to a file
         * OPERAND 3: file name
     * `list load`
-        * writes a list to a file
+        * loads a list from a file
         * OPERAND 3: the name of the list you want to store to
         * OPERAND 4: file name
     * `list len`
