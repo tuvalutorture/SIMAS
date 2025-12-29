@@ -55,13 +55,6 @@ typedef struct LinkedList LinkedList;
 typedef struct hashMapItem hashMapItem;
 typedef struct HashMap HashMap;
 
-typedef struct variable variable;
-typedef struct instruction instruction;
-typedef struct openFile openFile;
-typedef struct operator operator;
-typedef struct InstructionSet InstructionSet;
-typedef struct command command;
-
 struct listItem {
     void *data;
     listItem *next;
@@ -86,7 +79,15 @@ struct HashMap {
     int elementCount;
 };
 
-struct command { 
+typedef struct command command;
+typedef struct variable variable;
+typedef struct instruction instruction;
+typedef struct openFile openFile;
+typedef struct function function;
+typedef struct operator operator;
+typedef struct InstructionSet InstructionSet;
+
+struct command { /* spoingus my beloved */
     char *(*commandPointer)(instruction*, openFile*); 
 };
 
@@ -109,12 +110,18 @@ struct instruction {
     char *prefix;
 };
 
+struct function {
+    int start, end;
+    int parameterCount;
+};
+
 struct openFile {
     char *path;
     instruction **instructions;
     HashMap variables;
     HashMap labels;
     HashMap lists; 
+    HashMap functions;
     int instructionCount;
     int programCounter;
 };
@@ -171,13 +178,13 @@ void *reallocate(void *block, size_t size) {
 void executeFile(openFile *current, int doFree); /* forward */
 void setUpCommands();
 void beginCommandLine(char *entryMsg, openFile *passed);
-void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*));
+void executeInstruction(openFile *cur);
 
 void dummy() { float f=0,*fp; fp=&f; printf("%f",*fp); } /* only needed for retarded systems like turbo c to trick it into bringing in float libs */
 
 void cry(char *msg) { puts(msg); exit(2847172); }
 
-void snadmwithc() {
+void snadmwithc() { /* sandwich hrhehehheheheheheheheheeeehheheherhehehehhehhehhehhhehhehhehehehhehhehhehhehehehehhehheheheehhehehhehehnehehehehe */
     debugMode = !debugMode;
     if (debugMode) { puts("debug mode enabled"); }
     else { puts("debug mode disabled"); }
@@ -220,7 +227,7 @@ unsigned long hash(unsigned char *str) { /* wonderful lil algorithm called djb2.
     return brickofhash;
 }
 
-HashMap create_hashmap(int buckets) { /* genuinely one of the only times java might be good for shit ngl */
+HashMap create_hashmap(int buckets) { /* CONSTRUCTORS!? OBJECTS!? IN MY C CODE!? WHAT THE FUCK IS THIS, JAVA!? */
     HashMap new;
     new.buckets = buckets;
     new.elementCount = 0;
@@ -275,10 +282,10 @@ void *searchHashMap(HashMap *map, char *key) {
 
 void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*)) {
     LinkedList *location = grabHashMapLocation(map, key); listItem *newListItem; hashMapItem *newItem;
-    if (map->buckets < (map->elementCount + (map->elementCount / 4))) {
-        changeHashMap(map, map->buckets); 
-        addItemToMap(map, item, key, freeRoutine);
-        return;
+    if (map->buckets < (map->elementCount - (map->elementCount / 4))) { /* weird calculation but we fw it */
+        changeHashMap(map, map->buckets);  
+        addItemToMap(map, item, key, freeRoutine); /* ooooo recursion */
+        return; /* nvm no recursive functions here */
     }
     newListItem = (listItem *)callocate(1, sizeof(listItem));
     newItem = (hashMapItem *)mallocate(sizeof(hashMapItem));
@@ -339,22 +346,16 @@ void freeHashMap(HashMap map) { /* Noli manere in memoria - Saevam iram et dolor
     free(map.items);
 }
 void freeInstructionSet(InstructionSet *isa) { freeHashMap(isa->operators); freeHashMap(isa->prefixes); }
+void cleanFile(openFile *file) { /* cleans a file for re-execution */
+    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels); freeHashMap(file->functions);
+    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
+}
 void freeFile(openFile file) {
     int i;
     DEBUG_PRINT("freeing instructions\n");
     if (file.instructions != NULL) { for (i = 0; i < file.instructionCount; i++) { freeInstruction(file.instructions[i]); } free(file.instructions); }
-    DEBUG_PRINT("freeing vars\n");
-    freeHashMap(file.variables);
-    DEBUG_PRINT("freeing labels\n");
-    freeHashMap(file.labels);
-    DEBUG_PRINT("freeing lists\n");
-    freeHashMap(file.lists);
+    cleanFile(&file);
     if (file.path != NULL) { free(file.path); }
-}
-
-void cleanFile(openFile *file) { /* cleans a file for re-execution */
-    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels);
-    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
 }
 
 void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
@@ -448,7 +449,7 @@ instruction *add_instruction(char *inst, char *arguments[], char *prefix, int ar
     return instruct;
 }
 
-void addOperator(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { /* CONSTRUCTORS!? OBJECTS!? IN MY C CODE!? WHAT THE FUCK IS THIS, JAVA!? */
+void addOperator(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { 
     operator *op = (operator *)mallocate(sizeof(operator)); char *joined;
     op->functionPointer = functionPointer; 
     op->minArgs = minimumArguments;
@@ -456,6 +457,12 @@ void addOperator(char *name, char *prefix, void (*functionPointer)(void*), int m
     else { joined = strdup(name); }
     addItemToMap(&ValidInstructions.operators, op, joined, free);
     free(joined);
+}
+
+void addCommand(char *name, char *(*commandPointer)(instruction*, openFile*)) { 
+    command *cmd = (command *)mallocate(sizeof(command));
+    cmd->commandPointer = commandPointer;
+    addItemToMap(&ValidCommands, cmd, name, free);
 }
 
 void varcpy(variable *dest, variable *src) { 
@@ -687,7 +694,7 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
         printf("$ ");
         value = grabUserInput(256);
         if (!value) { cry("**FATAL ERROR**:\nUnable to allocate memory!\n"); }
-        temp = stripSemicolon(value); strip(temp, ' ');
+        temp = stripSemicolon(value); strip(temp, ' '); 
         if (strcmp(temp, "") == 0) {free(value); free(temp); continue;} /* blank check */
         free(temp);
         inst = parseInstructions(value, ValidInstructions);
@@ -695,17 +702,13 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
             command *cmd = ((command *)searchHashMap(&ValidCommands, inst->operation));
             if (cmd != NULL) {
                 char *ret = cmd->commandPointer(inst, passed);
-                if (ret == NULL) {
-                    freeInstruction(inst);
-                    free(value);
-                    goto exit; /* chat is this BASIC? */
-                }
+                if (ret == NULL) { free(value); break; }
                 printf("%s", ret);
             } else { 
                 printf("invalid command\n"); 
             }
         } else if (findNumberArgs(inst, ValidInstructions) == -1 && strchr(inst->operation, '@') == NULL) {
-            printf("invalid instruction\n"); freeInstruction(inst); free(value); continue;
+            printf("invalid instruction\n");
         } else {
             if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst, ValidInstructions)) {
                 passed->instructions = (instruction **)reallocate(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
@@ -721,11 +724,8 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
             }
         }
 
-        freeInstruction(inst);
-        free(value);
+        freeInstruction(inst); free(value);
     }
-
-    exit: /* yes gotos are shit. no i can't double-break from a loop. */
     
     freeHashMap(ValidCommands);
     freeFile(*passed);
@@ -734,6 +734,7 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
     exit(0);
 }
 
+/* actual function code / helpers                                                       */
 int checkVarTruthiness(variable *var) {
     switch (var->type) {
         case NUM: if (var->data.num != 0.0) { return 1; } else return 0;
@@ -814,7 +815,6 @@ void setVar(variable *var, int type, char* value, double num, int bool) {
     if (val) free(val);
 }
 
-/* actual function code / helpers                                                       */
 void negateBoolean(variable *var) { if (var->type == BOOL) { var->data.bool = !var->data.bool; } else { cry("NOT must be used on a bool!"); }}
 void writeFromVar(variable *var, char *path) { char *variable = stringFromVar(*var); writeFile(path, variable); free(variable); } 
 void labelJump(int *location, int *programCounter) { *programCounter = *location; }
@@ -990,12 +990,12 @@ void loadList(HashMap *listMap, char *name, char *path) {
     unFormatList(new, temp); free(temp);
 }
 
-void listAppendConstant(LinkedList *li, char **arguments, int *argumentCount) {
+void listAppendConstant(LinkedList *li, char **arguments, int argumentCount) {
     int type = grabType(arguments[1]);
     variable var; var.type = type;
     if (type == NUM) { var.data.num = (double)atof(arguments[2]); }
     else if (type == BOOL) { var.data.bool = trueOrFalse(arguments[2]); }
-    else if (type == STR) { var.data.str = joinStringsSentence(arguments, *argumentCount, 2); }
+    else if (type == STR) { var.data.str = joinStringsSentence(arguments, argumentCount, 2); }
     appendElementToList(li, var); if (type == STR && var.data.str) free(var.data.str);
 }
 
@@ -1008,6 +1008,38 @@ variable create_variable_with_value(char *name, int type, char *value, double nu
         default: cry("Invalid type!\n");
     }
     return var;
+}
+
+void registerFunction(openFile *caller, char **arguments, int argumentCount) {
+    int i; function *new = (function *)mallocate(sizeof(function)); 
+    if (argumentCount < 2) { free(new); handleError("too little arguments", 57, 0, caller); }
+    new->parameterCount = atoi(arguments[1]);
+    new->start = caller->programCounter; 
+    for (i = caller->programCounter; i < caller->instructionCount; i++) { if (strcmp(caller->instructions[i]->operation, "end") == 0) { new->end = i; break; }}
+    if (i == new->start) { free(new); handleError("no end to function", 84, 0, caller); }
+    addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
+}
+
+void executeFunction(openFile *caller, char **arguments, int argumentCount) {
+    int returnSpot = caller->programCounter, i; function *func = searchHashMap(&caller->functions, arguments[0]);
+    if (func == NULL) handleError("invalid function", 38, 0, caller);
+    if (argumentCount < (func->parameterCount * 2) + 1) handleError("too little arguments", 57, 0, caller);
+    for (i = 0; i < func->parameterCount; i++) {
+        char *varName, *temp, *originalVar = arguments[i * 2 + 2], varType = tolower(arguments[i * 2 + 1][0]);
+        variable *newVar = (variable *)mallocate(sizeof(variable));
+        temp = grabStringOfNumber((double)i);
+        varName = (char *)callocate(strlen(temp) + 2, sizeof(char));
+        strcat(varName, "$"); strcat(varName, temp);
+        free(temp); 
+        
+    }
+    caller->programCounter = func->start + 1;
+    while (strcmp(caller->instructions[caller->programCounter]->operation, "ret")) {
+        executeInstruction(caller); caller->programCounter += 1;
+        if (caller->programCounter == func->end) caller->programCounter = func->start + 2;
+    }
+    arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount;
+    if (argumentCount == 0) { caller->programCounter = returnSpot; return; }
 }
 
 /* console i/o      */
@@ -1061,12 +1093,15 @@ void lis_load(openFile *file) { loadList(&file->lists, file->instructions[file->
 void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), NUM, NULL, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->elements, 0); }
 void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[1], formatList(*(LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
 void lis_upc(openFile *file) { char **arguments = file->instructions[file->programCounter]->arguments; variable var = create_variable_with_value(NULL, grabType(arguments[2]), joinStringsSentence(arguments, file->instructions[file->programCounter]->argumentCount, 4), (double)atof(arguments[4]), trueOrFalse(arguments[3])); varcpy((variable *)traverseList(atoi(arguments[1]) - 1, 0, ((LinkedList *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data, &var); }
-void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, &file->instructions[file->programCounter]->argumentCount); }
+void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
+/* function ops     */
+void fun_fun(openFile *file) { registerFunction(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
+void fun_call(openFile *file) { executeFunction(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 
 /* command functions for the CLI */
-char *cmd_quit(instruction *inst, openFile *file) { return NULL; } /* this is what we call a pro gamer move */
+char *cmd_quit(instruction *inst, openFile *file) { freeInstruction(inst); return NULL; } /* this is what we call a pro gamer move */
 char *cmd_clear(instruction *inst, openFile *file) { freeFile(*file); memset(file, 0, sizeof(openFile)); return ""; }
-char *cmd_debug(instruction *inst, openFile *file) { debugMode = !debugMode; return "debugger toggled\n"; }
+char *cmd_debug(instruction *inst, openFile *file) { snadmwithc(); return ""; }
 char *cmd_load(instruction *inst, openFile *file) {
     if (inst->argumentCount) {
         freeFile(*file);
@@ -1150,20 +1185,23 @@ void executeInstruction(openFile *cur) { /* all of these are defined up here so 
     string = buildStringFromInstruction(cur->instructions[cur->programCounter]);
     DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", string, cur->programCounter);
     found = searchHashMap(&ValidInstructions.operators, string);
-    if (found != NULL) { (found->functionPointer)(cur); }
+    if (found != NULL && found->functionPointer != NULL) { (found->functionPointer)(cur); }
     free(string);
 }
 
 void executeFile(openFile *current, int doFree) {
-    preprocessLabels(current); current->lists = create_hashmap(1); current->variables = create_hashmap(10); 
+    preprocessLabels(current); current->lists = create_hashmap(1); current->variables = create_hashmap(10); current->functions = create_hashmap(1);
     for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); }
     if (doFree) freeFile(*current);
 }
 
 void setUpStdlib(void) {
-    int count = 44;
+    int count = 49;
     ValidInstructions.operators = create_hashmap(count); ValidInstructions.prefixes = create_hashmap(1);
     addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
+    addOperator("label", NULL, NULL, 1); /* no-op */
+    addOperator("end", NULL, NULL, 1); /* no-op */
+    addOperator("ret", NULL, NULL, 0); /* no-op */
     addOperator("print", NULL, (void(*)(void*))con_printv, 1); 
     addOperator("println", NULL, (void(*)(void*))con_println, 0);
     addOperator("prints", NULL, (void(*)(void*))con_prints, 0); 
@@ -1172,7 +1210,7 @@ void setUpStdlib(void) {
     addOperator("write", NULL, (void(*)(void*))fio_write, 2);
     addOperator("writev", NULL, (void(*)(void*))fio_writev, 2); 
     addOperator("not", NULL, (void(*)(void*))etc_not, 1);
-    addOperator("quit", NULL, (void(*)(void*))etc_quit, 1);
+    addOperator("quit", NULL, (void(*)(void*))etc_quit, 0);
     addOperator("add", NULL, (void(*)(void*))mat_add, 3);
     addOperator("sub", NULL, (void(*)(void*))mat_sub, 3);
     addOperator("mul", NULL, (void(*)(void*))mat_mul, 3);
@@ -1208,32 +1246,22 @@ void setUpStdlib(void) {
     addOperator("dump", "list", (void(*)(void*))lis_dump, 2); 
     addOperator("upc", "list", (void(*)(void*))lis_upc, 4); 
     addOperator("appc", "list", (void(*)(void*))lis_appc, 3); 
+    addOperator("fun", NULL, (void(*)(void *))fun_fun, 2);
+    addOperator("call", NULL, (void(*)(void *))fun_call, 2);
 }
 
 void setUpCommands() {
-    int count = 9, i;
-    command **cmds = (command **)mallocate(count * sizeof(command *));
-    for (i = 0; i < count; i++) cmds[i] = (command *)mallocate(sizeof(command));
-    cmds[0]->commandPointer = cmd_quit;
-    cmds[1]->commandPointer = cmd_run;
-    cmds[2]->commandPointer = cmd_load;
-    cmds[3]->commandPointer = cmd_save;
-    cmds[4]->commandPointer = cmd_dump;
-    cmds[5]->commandPointer = cmd_clear;
-    cmds[6]->commandPointer = cmd_edit;
-    cmds[7]->commandPointer = cmd_help;
-    cmds[8]->commandPointer = cmd_debug;
-    ValidCommands = create_hashmap(9); 
-    addItemToMap(&ValidCommands, cmds[0], "!quit", free);
-    addItemToMap(&ValidCommands, cmds[1], "!run", free);
-    addItemToMap(&ValidCommands, cmds[2], "!load", free);
-    addItemToMap(&ValidCommands, cmds[3], "!save", free);
-    addItemToMap(&ValidCommands, cmds[4], "!dump", free);
-    addItemToMap(&ValidCommands, cmds[5], "!clear", free);
-    addItemToMap(&ValidCommands, cmds[6], "!edit", free);
-    addItemToMap(&ValidCommands, cmds[7], "!help", free);
-    addItemToMap(&ValidCommands, cmds[8], "!debug", free);
-    free(cmds);
+    int count = 9;
+    ValidCommands = create_hashmap(count); 
+    addCommand("!quit", cmd_quit);
+    addCommand("!run", cmd_run);
+    addCommand("!load", cmd_load);
+    addCommand("!save", cmd_save);
+    addCommand("!dump", cmd_dump);
+    addCommand("!clear", cmd_clear);
+    addCommand("!edit", cmd_edit);
+    addCommand("!help", cmd_help);
+    addCommand("!debug", cmd_debug);
 }
 
 int main(int argc, const char * argv[]) {
