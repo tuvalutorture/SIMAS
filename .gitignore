@@ -14,6 +14,9 @@ CppProperties.json
 simas
 simas.exe
 
+#ignate simasjs blaspheme
+windows
+
 # Ignore massif reports
 massif.*
 
@@ -28,3 +31,4 @@ massif.*
 # unused cli
 cmd.c
 allocs.log
+

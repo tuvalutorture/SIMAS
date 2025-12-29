@@ -1,0 +1,741 @@
+list new days;
+list appc days str monday;
+list appc days str tuesday;
+list appc days str wednesday;
+list appc days str thursday;
+list appc days str friday;
+list appc days str saturday;
+list appc days str sunday;
+
+list new moods;
+list appc moods str normal;
+list appc moods str bored;
+list appc moods str happy;
+list appc moods str angry;
+list appc moods str hungry;
+list appc moods str tired;
+list appc moods str silly;
+list appc moods str skinless;
+list appc moods str sickly;
+
+set num jeremy_health 100;
+set num jeremy_hunger 60;
+set num jeremy_stamina 75;
+set num jeremy_happy 50;
+
+set num actions_since_last_play 0;
+set num played 0;
+
+set num money 5;
+set num food 3;
+
+set num hour 8;
+set num minute 30;
+set num day 5;
+
+set num days_since_last_working 0;
+set num worked 0;
+set num reprimands 0;
+set num fired 0;
+
+set num is_ill 0;
+set num jeremy_mood 0;
+
+set num missed_today 0;
+
+set str input ;
+set num action 0;
+
+set num tmpa 0;
+set num tmpb 0;
+set num tmpc 0;
+
+set str mood_str ;
+set str day_str ;
+
+set num mood_idx 1;
+set num day_idx 1;
+
+set num state_len 0;
+
+list new state;
+
+fun init_state 0;
+    set num jeremy_health 100;
+    set num jeremy_hunger 60;
+    set num jeremy_stamina 75;
+    set num jeremy_happy 50;
+
+    set num actions_since_last_play 0;
+    set num played 0;
+
+    set num money 5;
+    set num food 3;
+
+    set num hour 8;
+    set num minute 30;
+    set num day 5;
+
+    set num days_since_last_working 0;
+    set num worked 0;
+    set num reprimands 0;
+    set num fired 0;
+
+    set num is_ill 0;
+    set num jeremy_mood 0;
+
+    set num missed_today 0;
+    ret;
+end FUN;
+
+fun save_game 0;
+    list new state;
+
+    list appc state num 0;
+    list upv state 1 num food;
+    list appc state num 0;
+    list upv state 2 num money;
+    list appc state num 0;
+    list upv state 3 num actions_since_last_play;
+    list appc state num 0;
+    list upv state 4 num days_since_last_working;
+    list appc state num 0;
+    list upv state 5 num reprimands;
+    list appc state num 0;
+    list upv state 6 num hour;
+    list appc state num 0;
+    list upv state 7 num minute;
+    list appc state num 0;
+    list upv state 8 num day;
+    list appc state num 0;
+    list upv state 9 num is_ill;
+    list appc state num 0;
+    list upv state 10 num jeremy_mood;
+    list appc state num 0;
+    list upv state 11 num jeremy_happy;
+    list appc state num 0;
+    list upv state 12 num jeremy_health;
+    list appc state num 0;
+    list upv state 13 num jeremy_hunger;
+    list appc state num 0;
+    list upv state 14 num jeremy_stamina;
+    list appc state num 0;
+    list upv state 15 num fired;
+    list appc state num 0;
+    list upv state 16 num worked;
+    list appc state num 0;
+    list upv state 17 num missed_today;
+
+    list dump state jeremy.sav;
+    ret;
+end FUN;
+
+fun load_game 0;
+    list load state jeremy.sav;
+    list len state state_len;
+
+    copy state_len tmpa;
+    ste num tmpa 0;
+    jumpnv lg_ok tmpa;
+
+    call init_state;
+    call save_game;
+    ret;
+
+    label lg_ok;
+    list acc state 1 food;
+    list acc state 2 money;
+    list acc state 3 actions_since_last_play;
+    list acc state 4 days_since_last_working;
+    list acc state 5 reprimands;
+    list acc state 6 hour;
+    list acc state 7 minute;
+    list acc state 8 day;
+    list acc state 9 is_ill;
+    list acc state 10 jeremy_mood;
+    list acc state 11 jeremy_happy;
+    list acc state 12 jeremy_health;
+    list acc state 13 jeremy_hunger;
+    list acc state 14 jeremy_stamina;
+    list acc state 15 fired;
+    list acc state 16 worked;
+    list acc state 17 missed_today;
+    ret;
+end FUN;
+
+fun clamp_stats 0;
+    copy jeremy_health tmpa;
+    gt num tmpa 100;
+    jumpnv ch_ok tmpa;
+    set num jeremy_health 100;
+    add num jeremy_happy 10;
+    label ch_ok;
+
+    copy jeremy_stamina tmpa;
+    gt num tmpa 100;
+    jumpnv cs_ok tmpa;
+    set num jeremy_stamina 100;
+    label cs_ok;
+
+    ret;
+end FUN;
+
+fun tick_time 0;
+    copy minute tmpa;
+    gte num tmpa 60;
+    jumpnv tt_no_hour tmpa;
+    add num hour 1;
+    sub num minute 60;
+    label tt_no_hour;
+
+    copy hour tmpa;
+    gte num tmpa 24;
+    jumpnv tt_no_day tmpa;
+    sub num hour 24;
+    add num day 1;
+    sub num money 5;
+    set num worked 0;
+    set num missed_today 0;
+    label tt_no_day;
+
+    copy day tmpa;
+    gte num tmpa 7;
+    jumpnv tt_done tmpa;
+    set num day 0;
+    label tt_done;
+
+    ret;
+end FUN;
+
+fun set_mood 0;
+    copy jeremy_mood tmpa;
+    eqc num tmpa 7;
+    jumpv sm_keep tmpa;
+
+    copy is_ill tmpa;
+    eqc num tmpa 1;
+    jumpv sm_sick tmpa;
+
+    copy jeremy_health tmpa;
+    ste num tmpa 50;
+    jumpv sm_sick tmpa;
+
+    copy jeremy_hunger tmpa;
+    ste num tmpa 50;
+    jumpv sm_hungry tmpa;
+
+    copy jeremy_stamina tmpa;
+    ste num tmpa 25;
+    jumpv sm_tired tmpa;
+
+    copy actions_since_last_play tmpa;
+    gte num tmpa 5;
+    jumpv sm_bored tmpa;
+
+    copy jeremy_happy tmpa;
+    ste num tmpa 35;
+    jumpv sm_angry tmpa;
+
+    copy played tmpa;
+    eqc num tmpa 1;
+    jumpnv sm_check_normal tmpa;
+
+    copy actions_since_last_play tmpb;
+    ste num tmpb 2;
+    jumpv sm_silly tmpb;
+
+    label sm_check_normal;
+    copy jeremy_happy tmpa;
+    gte num tmpa 35;
+    copy jeremy_happy tmpb;
+    ste num tmpb 60;
+    and bool tmpa tmpb;
+    jumpv sm_normal tmpa;
+
+    set num jeremy_mood 2;
+    ret;
+
+    label sm_keep;
+    ret;
+
+    label sm_sick;
+    set num jeremy_mood 8;
+    set num is_ill 1;
+    ret;
+
+    label sm_hungry;
+    set num jeremy_mood 4;
+    ret;
+
+    label sm_tired;
+    set num jeremy_mood 5;
+    ret;
+
+    label sm_bored;
+    set num jeremy_mood 1;
+    ret;
+
+    label sm_angry;
+    set num jeremy_mood 3;
+    ret;
+
+    label sm_silly;
+    set num jeremy_mood 6;
+    ret;
+
+    label sm_normal;
+    set num jeremy_mood 0;
+    ret;
+end FUN;
+
+fun print_status 0;
+    copy jeremy_mood mood_idx;
+    add num mood_idx 1;
+    list acc moods mood_idx mood_str;
+
+    copy day day_idx;
+    add num day_idx 1;
+    list acc days day_idx day_str;
+
+    printc jeremy is feeling ;
+    print mood_str;
+    printc . you have ;
+    print money;
+    prints;
+    printc pounds.;
+    println;
+
+    printc it is ;
+    print hour;
+    printc :;
+    print minute;
+    prints;
+    printc on ;
+    print day_str;
+    printc .;
+    println;
+
+    copy fired tmpa;
+    eqc num tmpa 0;
+    jumpnv ps_done tmpa;
+
+    copy day tmpb;
+    st num tmpb 5;
+    jumpnv ps_done tmpb;
+
+    copy hour tmpc;
+    gte num tmpc 8;
+    jumpnv ps_done tmpc;
+
+    copy hour tmpc;
+    st num tmpc 16;
+    jumpnv ps_done tmpc;
+
+    printc protip: go to work to earn money.\n;
+
+    label ps_done;
+    ret;
+end FUN;
+
+fun degrade 0;
+    sub num jeremy_happy 1;
+    sub num jeremy_hunger 1;
+
+    copy is_ill tmpa;
+    eqc num tmpa 1;
+    jumpnv dg_done tmpa;
+    sub num jeremy_health 15;
+    label dg_done;
+
+    ret;
+end FUN;
+
+fun check_death 0;
+    copy jeremy_health tmpa;
+    ste num tmpa 0;
+    jumpv cd_dead tmpa;
+
+    copy jeremy_hunger tmpa;
+    gte num tmpa 150;
+    jumpv cd_dead tmpa;
+
+    ret;
+
+    label cd_dead;
+    printc jeremy is dead. goodbye.\n;
+    quit;
+end FUN;
+
+fun maybe_miss_work 0;
+    copy missed_today tmpa;
+    eqc num tmpa 1;
+    jumpv mmw_done tmpa;
+
+    copy fired tmpa;
+    eqc num tmpa 1;
+    jumpv mmw_done tmpa;
+
+    copy day tmpa;
+    gte num tmpa 5;
+    jumpv mmw_done tmpa;
+
+    copy hour tmpa;
+    gte num tmpa 17;
+    jumpnv mmw_done tmpa;
+
+    copy worked tmpa;
+    eqc num tmpa 0;
+    jumpnv mmw_done tmpa;
+
+    printc it seems you missed work today...\n;
+    add num days_since_last_working 1;
+    set num missed_today 1;
+
+    label mmw_done;
+    ret;
+end FUN;
+
+printc hello welcome to jeremy simulator\nin jeremy sim you take care of jeremy the rat\n;
+printc 1 = new game\n2 = load game\n;
+set in input;
+conv input num;
+copy input action;
+
+copy action tmpa;
+eqc num tmpa 1;
+jumpnv start_load tmpa;
+call init_state;
+call save_game;
+jump start_game;
+
+label start_load;
+call load_game;
+
+label start_game;
+printc game ready.\n;
+
+label main_loop;
+
+call clamp_stats;
+call check_death;
+
+copy jeremy_mood tmpa;
+eqc num tmpa 7;
+jumpv flesh_mode tmpa;
+
+call set_mood;
+call print_status;
+
+call maybe_miss_work;
+
+printc choose:\n1 nothing\n2 feed\n3 pet\n4 play\n5 rest\n6 vet\n7 buy food\n8 work\n9 save\n10 wait\n11 help\n13 quit\n;
+set in input;
+conv input num;
+copy input action;
+
+copy action tmpa;
+eqc num tmpa 11;
+jumpnv act_not_help tmpa;
+printc available actions: nothing, feed, pet, play, rest, vet, buy food, work, save, wait, help, quit\n;
+jump after_action;
+label act_not_help;
+
+copy action tmpa;
+eqc num tmpa 13;
+jumpnv act_not_quit tmpa;
+printc you abandoned jeremy. goodbye.\n;
+quit;
+label act_not_quit;
+
+copy action tmpa;
+eqc num tmpa 1;
+jumpnv act_not_nothing tmpa;
+printc you do nothing for a whole hour.\n;
+sub num jeremy_happy 5;
+sub num jeremy_stamina 1;
+add num hour 1;
+jump after_action;
+label act_not_nothing;
+
+copy action tmpa;
+eqc num tmpa 2;
+jumpnv act_not_feed tmpa;
+
+copy food tmpb;
+ste num tmpb 0;
+jumpnv feed_have tmpb;
+printc you do not have food.\n;
+jump after_action;
+
+label feed_have;
+sub num food 1;
+printc you feed jeremy.\n;
+
+copy jeremy_hunger tmpb;
+ste num tmpb 30;
+jumpv feed_starving tmpb;
+
+copy jeremy_hunger tmpb;
+ste num tmpb 90;
+jumpv feed_ok tmpb;
+
+add num jeremy_hunger 10;
+sub num jeremy_health 3;
+sub num jeremy_happy 3;
+printc jeremy is full already...\n;
+jump feed_check_over;
+
+label feed_ok;
+add num jeremy_hunger 10;
+add num jeremy_happy 5;
+printc jeremy is happier now that he has been fed.\n;
+jump feed_check_over;
+
+label feed_starving;
+add num jeremy_hunger 20;
+add num jeremy_health 10;
+add num jeremy_happy 15;
+printc jeremy is very happy you saved him from starvation.\n;
+
+label feed_check_over;
+copy jeremy_hunger tmpb;
+gte num tmpb 150;
+jumpnv feed_done tmpb;
+printc you overfed jeremy. he burst like a balloon.\n;
+set num jeremy_health 0;
+label feed_done;
+add num minute 10;
+jump after_action;
+label act_not_feed;
+
+copy action tmpa;
+eqc num tmpa 3;
+jumpnv act_not_pet tmpa;
+printc you pet jeremy. he is content.\n;
+add num jeremy_happy 5;
+add num minute 3;
+jump after_action;
+label act_not_pet;
+
+copy action tmpa;
+eqc num tmpa 4;
+jumpnv act_not_play tmpa;
+
+copy jeremy_stamina tmpb;
+st num tmpb 30;
+jumpnv play_ok tmpb;
+printc jeremy is too tired to play. maybe let him rest.\n;
+jump after_action;
+
+label play_ok;
+set num actions_since_last_play 0;
+sub num jeremy_stamina 20;
+add num jeremy_happy 10;
+sub num jeremy_hunger 5;
+set num played 1;
+printc jeremy had a good time playing.\n;
+add num hour 1;
+jump after_action;
+label act_not_play;
+
+copy action tmpa;
+eqc num tmpa 5;
+jumpnv act_not_rest tmpa;
+printc jeremy rests for a good while.\n;
+add num jeremy_stamina 40;
+add num hour 8;
+add num minute 15;
+jump after_action;
+label act_not_rest;
+
+copy action tmpa;
+eqc num tmpa 6;
+jumpnv act_not_vet tmpa;
+printc vet visit costs 15 pounds (+5 if treatment needed).\n;
+
+copy money tmpb;
+st num tmpb 15;
+jumpnv vet_can_pay tmpb;
+printc you do not have the cash.\n;
+add num minute 13;
+jump after_action;
+
+label vet_can_pay;
+sub num money 15;
+add num hour 1;
+add num minute 30;
+printc jeremy is at ;
+print jeremy_health;
+printc  health.\n;
+
+copy is_ill tmpb;
+eqc num tmpb 1;
+jumpnv vet_no_treat tmpb;
+
+copy money tmpc;
+st num tmpc 5;
+jumpnv vet_treat_ok tmpc;
+printc treatment needed but you cannot afford the extra 5.\n;
+jump after_action;
+
+label vet_treat_ok;
+sub num money 5;
+add num jeremy_health 15;
+set num is_ill 0;
+printc jeremy was sick, but was cured.\n;
+jump after_action;
+
+label vet_no_treat;
+printc jeremy seems fine.\n;
+jump after_action;
+label act_not_vet;
+
+copy action tmpa;
+eqc num tmpa 7;
+jumpnv act_not_buyfood tmpa;
+
+copy money tmpb;
+st num tmpb 10;
+jumpnv buy_ok tmpb;
+printc you do not have the money.\n;
+jump after_action;
+
+label buy_ok;
+sub num money 10;
+add num food 1;
+printc you buy food. you now have ;
+print food;
+printc  food.\n;
+add num minute 20;
+jump after_action;
+label act_not_buyfood;
+
+copy action tmpa;
+eqc num tmpa 8;
+jumpnv act_not_work tmpa;
+
+copy fired tmpb;
+eqc num tmpb 1;
+jumpnv work_has_job tmpb;
+printc not like you have employment.\n;
+jump after_action;
+
+label work_has_job;
+
+copy day tmpb;
+gte num tmpb 5;
+jumpv work_closed tmpb;
+
+copy hour tmpb;
+st num tmpb 6;
+jumpv work_closed tmpb;
+
+copy hour tmpb;
+gte num tmpb 17;
+jumpv work_closed tmpb;
+
+copy reprimands tmpb;
+gte num tmpb 3;
+jumpv work_fired tmpb;
+
+copy days_since_last_working tmpb;
+gte num tmpb 2;
+jumpv work_fired tmpb;
+
+add num minute 15;
+
+copy hour tmpb;
+st num tmpb 10;
+jumpnv work_late tmpb;
+
+printc you work until 17 and return to jeremy.\n;
+set num hour 17;
+set num minute 15;
+set num worked 1;
+add num money 20;
+jump after_action;
+
+label work_late;
+printc you arrive late and get scolded.\n;
+add num reprimands 1;
+set num hour 17;
+set num minute 15;
+set num worked 1;
+add num money 15;
+jump after_action;
+
+label work_fired;
+printc oops. you got fired.\n;
+set num fired 1;
+add num minute 30;
+jump after_action;
+
+label work_closed;
+printc the office is closed.\n;
+jump after_action;
+
+label act_not_work;
+
+copy action tmpa;
+eqc num tmpa 9;
+jumpnv act_not_save tmpa;
+call save_game;
+printc game saved.\n;
+jump after_action;
+label act_not_save;
+
+copy action tmpa;
+eqc num tmpa 10;
+jumpnv act_not_wait tmpa;
+printc for how long? (hours 1 to 24)\n;
+set in input;
+conv input num;
+copy input tmpb;
+ste num tmpb 0;
+jumpv wait_bad tmpb;
+copy input tmpb;
+gt num tmpb 24;
+jumpv wait_bad tmpb;
+add num hour input;
+jump after_action;
+label wait_bad;
+printc invalid wait.\n;
+jump after_action;
+label act_not_wait;
+
+copy action tmpa;
+eqc num tmpa 12;
+jumpnv act_not_skin tmpa;
+printc you skinned jeremy.\nall hail the flesh rodent.\n;
+set num jeremy_mood 7;
+set num jeremy_happy 0;
+set num jeremy_stamina 0;
+jump after_action;
+label act_not_skin;
+
+printc invalid action.\n;
+
+label after_action;
+
+copy played tmpa;
+eqc num tmpa 1;
+jumpv no_bump_play tmpa;
+add num actions_since_last_play 1;
+label no_bump_play;
+
+set num played 0;
+
+add num minute 1;
+call tick_time;
+call degrade;
+call clamp_stats;
+
+jump main_loop;
+
+label flesh_mode;
+printc all hail the flesh rodent.\n;
+sub num jeremy_health 5;
+add num minute 1;
+call tick_time;
+call check_death;
+jump main_loop;

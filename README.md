@@ -11,6 +11,8 @@ To run a SIMAS program, simply run ```./simas <filename(s)>```. <br>
 Additionally, you can use the ```-d``` flag as the last argument to get more info.
 You can also run just ```./simas``` for the SIMAS command line.
 
+An demo program, Jeremy Simulator (```jeremy.simas```), is included to showcase CMAS' features & capability.
+
 **Additional Notes** <br>
 
 SIMAS is case-sensitive, although instructions and data types are not. <br>
@@ -179,7 +181,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 ### Lists
 
 #### - list
-* list operations. lists are a special data structure that allows you to have multiple values in a single container.
+* list operations. lists are a special data structure that allows you to have multiple values in a single container. Indexing can be done both via constant numbers and variables.
 * OPERAND 1: type of operation
 * OPERAND 2: name of the list
 * All of the list operations:
@@ -238,11 +240,35 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 
 #### - prints
 * print a space
+* This is useful in cases where you may need to print something right after using ```print```.
+
+### Functions
+
+#### - fun
+* define a function.
+* OPERAND 1: The name of the function
+* OPERAND 2: The amount of arguments accepted by the function.
+
+#### - call
+* call a function
+* OPERAND 1: The name of the function of which to execute
+* OPERAND 2 (and every even-numbered operand hereon): Only needed if function takes args. The type of data that the arg passed is. V for a pre-existing variable, B for a boolean constant, N for a NUM constant, and S for a string constant.
+* OPERAND 3 (and every odd-numbered operand hereon): Only needed if function takes args. The data of the passed argument.
+
+#### - end
+* ends a block 
+* OPERAND 1: The type of block you are ending (currently only accepts "FUN" for function).
+
+#### - ret
+* breaks out of a function
+* Important: you MUST call this to break a function, else it will repeat endlessly.
+* OPERAND 1: Optional, the type of data being returned. V for a pre-existing variable, B for a boolean constant, N for a NUM constant, and S for a string constant.
+* OPERAND 2: Optional, but required if OPERAND 1 is present, and is the data being returned. This is shown in a $\[function name\] variable.
 
 ### Misc instructions
 
-#### - @
-* all code after @ in the current line is ignored, until a semicolon is seen. this is a comment feature
+#### - @ (comment)
+* all code after @ in the current line is ignored. comments must also end in a semicolon.
 
 #### - not
 * negation logical operator
