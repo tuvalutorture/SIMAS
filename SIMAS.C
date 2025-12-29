@@ -104,10 +104,10 @@ struct variable {
 };
 
 struct instruction {
-    char *operation;
-    int argumentCount;
     char **arguments;
+    char *operation;
     char *prefix;
+    int argumentCount;
 };
 
 struct function {
@@ -348,7 +348,7 @@ void freeHashMap(HashMap map) { /* Noli manere in memoria - Saevam iram et dolor
 void freeInstructionSet(InstructionSet *isa) { freeHashMap(isa->operators); freeHashMap(isa->prefixes); }
 void cleanFile(openFile *file) { /* cleans a file for re-execution */
     freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels); freeHashMap(file->functions);
-    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->programCounter = 0;
+    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->functions.items = NULL; file->programCounter = 0;
 }
 void freeFile(openFile file) {
     int i;
@@ -414,7 +414,6 @@ int findNumberArgs(instruction *inst, InstructionSet isa) {
 }
 
 int trueOrFalse(char *string) {
-    char *check = lowerize(string); int value = 0;
     char *check = lowerize(string); int value = 0;
     if (strcmp(check, "true") == 0) { value = 1; }
     else if (strcmp(check, "false") == 0) { value = 0; }
@@ -650,12 +649,9 @@ openFile openSimasFile(const char path[]) {
     FILE *file = fopen(path, "rb");
     openFile new;
     memset(&new, 0, sizeof(openFile));
-    openFile new;
-    memset(&new, 0, sizeof(openFile));
 
     if (file == NULL) { printf("failed to find a simas file!\n"); return new; }
 
-    new.path = strdup(path);
     new.path = strdup(path);
 
     while (!feof(file)) {
@@ -859,6 +855,7 @@ void standardMath(HashMap *varMap, char **arguments, char operation) {
     if (var2 == NULL) { op2 = atof(arguments[2]); }
     else if (var2->type != NUM) cry("You can only do math on a 'num' type variable!");
     else { op2 = var2->data.num; }
+    DEBUG_PRINTF("%f %c %f\n", var1->data.num, operation, op2);
     switch (operation) {
         case '+': var1->data.num += op2; break;
         case '-': var1->data.num -= op2; break;
@@ -866,6 +863,7 @@ void standardMath(HashMap *varMap, char **arguments, char operation) {
         case '/': if (op2 == 0.0) {cry("div by zero error\n");} else{ var1->data.num /= op2;} break; /* this is when we tell the user to eat shit and die, nerd */
         default: var1->data.num = 0;
     }
+    DEBUG_PRINTF("%f\n", var1->data.num);
 }
 
 void variableSet(HashMap *varMap, char **arguments, int argumentCount) {
@@ -1020,26 +1018,125 @@ void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
 }
 
-void executeFunction(openFile *caller, char **arguments, int argumentCount) {
-    int returnSpot = caller->programCounter, i; function *func = searchHashMap(&caller->functions, arguments[0]);
+void executeFunction(openFile *caller, char **arguments, int argumentCount) { /* monolith */
+    int returnSpot = caller->programCounter, i, varCount = 0 /* , listCount = 0 */ ; 
+    function *func = searchHashMap(&caller->functions, arguments[0]);
+    /* we need to ensure that even in functions in function, it will retain the data till we ACTUALLY need to be rid of it                                          */
+    /* this, however, comes at the cost of performance. however, this performance penalty is made up for in the lack of need to modify other aspects of the code.   */
+    char **varNames, /* **listNames, */ *types, *funcName = arguments[0]; variable **varPtrs; /* LinkedList **listPtrs; */
     if (func == NULL) handleError("invalid function", 38, 0, caller);
+    DEBUG_PRINT(funcName);
     if (argumentCount < (func->parameterCount * 2) + 1) handleError("too little arguments", 57, 0, caller);
-    for (i = 0; i < func->parameterCount; i++) {
-        char *varName, *temp, *originalVar = arguments[i * 2 + 2], varType = tolower(arguments[i * 2 + 1][0]);
-        variable *newVar = (variable *)mallocate(sizeof(variable));
-        temp = grabStringOfNumber((double)i);
-        varName = (char *)callocate(strlen(temp) + 2, sizeof(char));
-        strcat(varName, "$"); strcat(varName, temp);
-        free(temp); 
-        
+    if (func->parameterCount > 0) {
+        char **tempNames = (char **)mallocate(sizeof(char *) * func->parameterCount);
+        types = (char *)mallocate(sizeof(char) * func->parameterCount);
+        for (i = 0; i < func->parameterCount; i++) {
+            char *varName, *temp, varType = tolower(arguments[i * 2 + 1][0]);
+            temp = grabStringOfNumber((double)i);
+            varName = (char *)callocate(strlen(temp) + 2, sizeof(char));
+            varName[0] = '$'; strcat(varName, temp);
+            free(temp); tempNames[i] = varName; types[i] = varType;
+            /* if (varType == 'l') { listCount += 1;}
+            else */ if (varType == 'v' || varType == 's' || varType == 'b' || varType == 'n') { varCount += 1; }
+            else { free(tempNames); handleError("invalid type specification", 30, 0, caller); }
+        }    
+        /* i can condense this logic later, but this is a. for prototyping b. testing c. not having an unreadable mess */    
+        /* if (listCount > 0) {
+            int index = 0;
+            listNames = (char **)mallocate(sizeof(char *) * listCount); listPtrs = (LinkedList **)callocate(varCount, sizeof(LinkedList *));
+            for (i = 0; i < func->parameterCount; i++) { 
+                if (types[i] == 'l') { 
+                    LinkedList *list = searchHashMap(&caller->lists, arguments[i * 2 + 2]);
+                    listNames[index] = tempNames[i]; 
+                    if (list == NULL) { free(tempNames); free(listNames); handleError("list expected", 26, 0, caller); }
+                    listPtrs[index] = list;
+                    addItemToMap(&caller->lists, list, listNames[index], NULL);  we don't free the item itself because it's simply an alias (to mimic turrnut's frankly stupid behaviour that lists are simply aliased in SIMASJS) 
+                    index += 1;
+                }
+            }
+        } */
+        if (varCount > 0) {
+            int index = 0;
+            varNames = (char **)mallocate(sizeof(char *) * varCount); varPtrs = (variable **)callocate(varCount, sizeof(variable *));
+            for (i = 0; i < func->parameterCount; i++) {
+                if (types[i] != 'l') { /* since we check types earlier it's safe to assume any non-'l' type will be a var */
+                    variable *newVar = (variable *)callocate(1, sizeof(variable)), *old, *test;
+                    varNames[index] = tempNames[i]; varPtrs[index] = newVar;
+                    DEBUG_PRINTF("%c\n", types[i]);
+                    switch (types[i]) {
+                        case 'v': 
+                            old = searchHashMap(&caller->variables, arguments[i * 2 + 2]);
+                            if (old == NULL) { free(tempNames); freeVariable(newVar); /* if (listNames) { free(listNames); } */ free(varNames); handleError("var expected", 26, 0, caller); }
+                            varcpy(newVar, old);
+                            break;
+                        case 'n':
+                            newVar->data.num = (double)atof(arguments[i * 2 + 2]);
+                            newVar->type = NUM;
+                            break;
+                        case 's':
+                            newVar->type = STR;
+                            newVar->data.str = strdup(arguments[i * 2 + 2]);
+                            break;
+                        case 'b':
+                            newVar->type = BOOL;
+                            newVar->data.bool = trueOrFalse(arguments[i * 2 + 2]);
+                            break;
+                    }
+                    test = searchHashMap(&caller->variables, varNames[index]);
+                    if (test != NULL) { /* there shouldn't be any other $i vars */
+                        if (test->data.str != NULL && test->type == STR) free(test->data.str);
+                        deleteItemFromMap(&caller->variables, varNames[index]); 
+                    }
+                    addItemToMap(&caller->variables, newVar, varNames[index], NULL);
+                    index += 1;
+                }
+            }
+        }
+        free(tempNames); free(types);
     }
     caller->programCounter = func->start + 1;
     while (strcmp(caller->instructions[caller->programCounter]->operation, "ret")) {
+        for (i = 0; i < varCount; i++) {
+            if (searchHashMap(&caller->variables, varNames[i]) == NULL) addItemToMap(&caller->variables, varPtrs[i], varNames[i], NULL); /* re-adds any missing variables, should another function have prematurely deleted/overwritten it */
+        }
         executeInstruction(caller); caller->programCounter += 1;
         if (caller->programCounter == func->end) caller->programCounter = func->start + 2;
     }
     arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount;
-    if (argumentCount == 0) { caller->programCounter = returnSpot; return; }
+    caller->programCounter = returnSpot;
+    if (argumentCount >= 2) {
+        char *retName = (char *)callocate(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]); 
+        variable *returnedVar = (variable *)callocate(1, sizeof(variable)), *old;
+        retName[0] = '$'; strcat(retName, funcName);
+        switch (returnType) {
+            case 'v':
+                old = searchHashMap(&caller->variables, arguments[1]);
+                if (old == NULL) { freeVariable(returnedVar); handleError("var expected", 229, 0, caller); }
+                varcpy(returnedVar, old);
+                break;
+            case 'n':
+                returnedVar->type = NUM;
+                returnedVar->data.num = (double)atof(arguments[1]);
+                break;
+            case 's':
+                returnedVar->type = STR;
+                returnedVar->data.str = strdup(arguments[1]);
+                break;
+            case 'b':
+                returnedVar->type = BOOL;
+                returnedVar->data.bool = trueOrFalse(arguments[1]);
+                break;
+            default:
+                freeVariable(returnedVar);
+                handleError("invalid type specification", 30, 0, caller);
+                break;
+        }
+        addItemToMap(&caller->variables, returnedVar, retName, (void(*)(void *))freeVariable);
+        free(retName);
+    }
+    for (i = 0; i < varCount; i++) { deleteItemFromMap(&caller->variables, varNames[i]); free(varNames[i]); freeVariable(varPtrs[i]); }
+    /* for (i = 0; i < listCount; i++) { deleteItemFromMap(&caller->lists, listNames[i]); free(listNames[i]); } */
+    if (varCount > 0) { free(varNames); free(varPtrs); }
 }
 
 /* console i/o      */
