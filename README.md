@@ -42,7 +42,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 1: name of the label
 * OPERAND 2: name of a variable. if true, will jump to the label
 
-#### - jumpnv
+#### - jumpnv (CMAS only)
 * jump to a label. this is a conditional jump
 * OPERAND 1: name of the label
 * OPERAND 2: name of a variable. if false, will jump to the label
@@ -108,19 +108,19 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 2: the first boolean variable, being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
-#### - nand
+#### - nand (CMAS only)
 * performs logical operation AND on OPERAND 2 and 3; the value will be assigned to OPERAND 2
 * OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
 * OPERAND 2: the first boolean variable, being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
-#### - nor
+#### - nor (CMAS only)
 * performs logical operation OR on OPERAND 2 and 3; the value will be assigned to OPERAND 2
 * OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
 * OPERAND 2: the first boolean variable, being a variable name
 * OPERAND 3: the second boolean variable, optionally being a variable name
 
-#### - xor
+#### - xor (CMAS only)
 * performs logical operation XOR on OPERAND 2 and 3; the value will be assigned to OPERAND 2
 * OPERAND 1: the data type of both OPERAND 2 and 3 (must be `bool`) 
 * OPERAND 2: the first boolean variable, being a variable name
@@ -181,7 +181,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 ### Lists
 
 #### - list
-* list operations. lists are a special data structure that allows you to have multiple values in a single container. Indexing can be done both via constant numbers and variables.
+* list operations. lists are a special data structure that allows you to have multiple values in a single container. Indexing can be done both via constant numbers and variables. (CMAS only feature)
 * OPERAND 1: type of operation
 * OPERAND 2: name of the list
 * All of the list operations:
@@ -251,8 +251,9 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 
 #### - call
 * call a function
+* Important: When passing in or returning a LIST, it will be an ALIAS to the list passed/returned (meaning any modifications to the new list will also apply to the original list). This is intentional behaviour, as to replicate the behaviour of SIMASJS.
 * OPERAND 1: The name of the function of which to execute
-* OPERAND 2 (and every even-numbered operand hereon): Only needed if function takes args. The type of data that the arg passed is. V for a pre-existing variable, B for a boolean constant, N for a NUM constant, and S for a string constant.
+* OPERAND 2 (and every even-numbered operand hereon): Only needed if function takes args. The type of data that the arg passed is. V for a pre-existing variable, L is for a pre-existing list, B for a boolean constant, N for a NUM constant, and S for a string constant.
 * OPERAND 3 (and every odd-numbered operand hereon): Only needed if function takes args. The data of the passed argument.
 
 #### - end
@@ -261,8 +262,9 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 
 #### - ret
 * breaks out of a function
+* Important: When passing in or returning a LIST, it will be an ALIAS to the list passed/returned (meaning any modifications to the new list will also apply to the original list). This is intentional behaviour, as to replicate the behaviour of SIMASJS.
 * Important: you MUST call this to break a function, else it will repeat endlessly.
-* OPERAND 1: Optional, the type of data being returned. V for a pre-existing variable, B for a boolean constant, N for a NUM constant, and S for a string constant.
+* OPERAND 1: Optional, the type of data being returned. V for a pre-existing variable, L is for a pre-existing list, B for a boolean constant, N for a NUM constant, and S for a string constant.
 * OPERAND 2: Optional, but required if OPERAND 1 is present, and is the data being returned. This is shown in a $\[function name\] variable.
 
 ### Misc instructions

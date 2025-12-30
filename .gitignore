@@ -27,6 +27,7 @@ massif.*
 
 # testing data
 *.sad
+*.sav
 
 # unused cli
 cmd.c

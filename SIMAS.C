@@ -49,6 +49,7 @@
 #define ALLOC_DEBUGGING 0
 
 int debugMode = 0;
+int commandPrompt = 0;
 
 typedef struct listItem listItem;
 typedef struct LinkedList LinkedList;
@@ -191,7 +192,7 @@ void snadmwithc() { /* sandwich hrhehehheheheheheheheheeeehheheherhehehehhehhehh
     else { puts("debug mode disabled"); }
 }
 
-char *strdup(const char *string) {
+char *stroustrup(const char *string) {
     int len = strlen(string) + 1;
     char *final = (char *)mallocate(len * sizeof(char));
     if (!final) return NULL;
@@ -290,7 +291,7 @@ void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*
     }
     newListItem = (listItem *)callocate(1, sizeof(listItem));
     newItem = (hashMapItem *)mallocate(sizeof(hashMapItem));
-    newItem->data = item; newItem->key = strdup(key); newItem->freeRoutine = freeRoutine;
+    newItem->data = item; newItem->key = stroustrup(key); newItem->freeRoutine = freeRoutine;
     newListItem->data = newItem;
     DEBUG_PRINTF("added item with key %s\n", key);
     if (location->first == NULL) { location->first = newListItem; }
@@ -359,7 +360,7 @@ void freeFile(openFile file) {
     if (file.path != NULL) { free(file.path); }
 }
 
-void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
+void handleError(char *errorMsg, int errCode, int fatal, openFile *file) { /* more often than not, you will likely cause sOME sort of minor memory leak when this is called, as not everything has been properly cleaned up. */
     if (fatal) { /* veni, veni, venias; ne me mori facias */
         printf("Fatal error: %s of code %d\nPress 'enter' to quit...\n", errorMsg, errCode);
         freeFile(*file);
@@ -370,12 +371,13 @@ void handleError(char *errorMsg, int errCode, int fatal, openFile *file) {
         char string[512];
         sprintf(string, "A non-fatal error %d (%s) has occurred at line %d. \nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg, file->programCounter);
         cleanFile(file);
-        beginCommandLine(string, file);
+        if (!commandPrompt) { beginCommandLine(string, file); }
+        else { puts(string); commandPrompt = 2; }
     }
 }
 
-char *stripSemicolon(char *input) { int position; char *string = strdup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
-char *lowerize(char *input) { int i, len; char *string = strdup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
+char *stripSemicolon(char *input) { int position; char *string = stroustrup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
+char *lowerize(char *input) { int i, len; char *string = stroustrup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
 void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }}
 void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
 
@@ -385,14 +387,14 @@ void convertLiteralNewLineToActualNewLine(char *string) {
         if ((string[i] == 'n' || string[i] == 'r')&& string[i - 1] == '\\') { 
             string[i - 1] = '\n';
             memcpy(string + i, string + 1 + i, sizeOf - i);
-            i -= 1; 
+            i -= 1; sizeOf = strlen(string);
         }
     } 
 }
 
 char *joinStringsSentence(char **strings, int stringCount, int offset) {
     char *finalString = NULL; int i, sizeOf = 0;
-    if (stringCount == 1) { finalString = strdup(strings[0]); return finalString; }
+    if (stringCount == 1) { finalString = stroustrup(strings[0]); convertLiteralNewLineToActualNewLine(finalString); return finalString; }
     for (i = offset; i < stringCount; i++) { sizeOf += strlen(strings[i]) + 1;}
     finalString = (char *)callocate(sizeOf + 1, sizeof(char)); if (finalString == NULL) cry("unable to string\nplease do not the string\n"); 
     for (i = offset; i < stringCount; i++) { strcat(finalString, strings[i]); if (i + 1 < stringCount) { strcat(finalString, " "); }} /* fuck yo optimization */
@@ -403,7 +405,7 @@ char *joinStringsSentence(char **strings, int stringCount, int offset) {
 char *buildStringFromInstruction(instruction *inst) {
     char *joined;
     if (inst->prefix != NULL) { char **temp; temp = (char **)mallocate(sizeof(char *) * 2); temp[0] = inst->prefix; temp[1] = inst->operation; joined = joinStringsSentence(temp, 2, 0); free(temp); }
-    else { joined = strdup(inst->operation); }
+    else { joined = stroustrup(inst->operation); }
     return joined;
 }
 
@@ -429,7 +431,7 @@ void set_variable_value(variable *var, int type, char *value, double num, int bo
     else if (type == BOOL) { var->data.bool = bool; }
     else if (type == STR) {
         if (!value) cry("No value passed in!\n");
-        var->data.str = strdup(value);
+        var->data.str = stroustrup(value);
         if (var->data.str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
     }
     var->type = type;
@@ -441,8 +443,8 @@ instruction *add_instruction(char *inst, char *arguments[], char *prefix, int ar
     instruction *instruct = (instruction *)mallocate(sizeof(instruction));
     if (args >= 1) { instruct->arguments = (char **)mallocate(sizeof(char*) * args); for (i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
     else { instruct->arguments = NULL; }
-    instruct->operation = strdup(ins); instruct->argumentCount = args;
-    if (prefix != NULL) { instruct->prefix = strdup(prefix); }
+    instruct->operation = stroustrup(ins); instruct->argumentCount = args;
+    if (prefix != NULL) { instruct->prefix = stroustrup(prefix); }
     else { instruct->prefix = NULL; }
     DEBUG_PRINTF("added instruction %s of arg count %d\n", instruct->operation, instruct->argumentCount);
     free(ins);
@@ -454,7 +456,7 @@ void addOperator(char *name, char *prefix, void (*functionPointer)(void*), int m
     op->functionPointer = functionPointer; 
     op->minArgs = minimumArguments;
     if (prefix != NULL) { char **temp; temp = (char **)mallocate(sizeof(char *) * 2); temp[0] = prefix; temp[1] = name; joined = joinStringsSentence(temp, 2, 0); free(temp); }
-    else { joined = strdup(name); }
+    else { joined = stroustrup(name); }
     addItemToMap(&ValidInstructions.operators, op, joined, free);
     free(joined);
 }
@@ -528,9 +530,10 @@ size_t stringLenFromVar(variable var) {
     else { return 0; }
 }
 
+/* ze tree horsemen of type feckery */
 char *stringFromVar(variable *var) {
-    if (var->type == STR) { return strdup(var->data.str); }
-    else if (var->type == BOOL) { return var->data.bool ? strdup("true") : strdup("false"); }
+    if (var->type == STR) { return stroustrup(var->data.str); }
+    else if (var->type == BOOL) { return var->data.bool ? stroustrup("true") : stroustrup("false"); }
     else if (var->type == NUM) { return grabStringOfNumber(var->data.num); }
     else { return NULL; }
 }
@@ -542,6 +545,15 @@ double numFromVar(variable *src) {
         case STR: return (double)atof(src->data.str);
         case BOOL: return (double)src->data.bool;
         default: return 0.0f;
+    }
+}
+
+int boolFromVar(variable *var) {
+    switch (var->type) {
+        case NUM: if (var->data.num != 0.0) { return 1; } else return 0;
+        case BOOL: if (var->data.bool != 0) { return 1; } else return 0;
+        case STR: if (var->data.str != NULL) { return trueOrFalse(var->data.str); } else return 0;
+        default: return 0;
     }
 }
 
@@ -663,7 +675,7 @@ openFile openSimasFile(const char path[]) {
 
     if (file == NULL) { printf("failed to find a simas file!\n"); return new; }
 
-    new.path = strdup(path);
+    new.path = stroustrup(path);
 
     while (!feof(file)) {
         int size = readFileToAndIncludingChar(file, ';'); char *buffer;
@@ -698,9 +710,9 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
 
     while (1) {
         char *value, *temp; instruction *inst;
-        printf("$ ");
+        commandPrompt = 1; printf("$ ");
         value = grabUserInput(256);
-        if (!value) { cry("**FATAL ERROR**:\nUnable to allocate memory!\n"); }
+        if (!value) { handleError("Unable to allocate memory\n", 10, 1, passed); }
         temp = stripSemicolon(value); strip(temp, ' '); 
         if (strcmp(temp, "") == 0) {free(value); free(temp); continue;} /* blank check */
         free(temp);
@@ -719,7 +731,7 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
         } else {
             if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst, ValidInstructions)) {
                 passed->instructions = (instruction **)reallocate(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
-                if (passed->instructions == NULL) { printf("**FATAL ERROR**:\nReallocation failed!\n"); free(value); break; }
+                if (passed->instructions == NULL) { free(value); handleError("Reallocation of memory failed\n", 11, 1, passed); break; }
                 passed->instructions[passed->instructionCount] = add_instruction(inst->operation, inst->arguments, inst->prefix, inst->argumentCount);
                 passed->instructionCount += 1;
                 if (strcmp(inst->operation, "label") == 0 && inst->prefix == NULL) passed->labels.buckets += 1;
@@ -742,15 +754,6 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
 }
 
 /* actual function code / helpers                                                       */
-int checkVarTruthiness(variable *var) {
-    switch (var->type) {
-        case NUM: if (var->data.num != 0.0) { return 1; } else return 0;
-        case BOOL: if (var->data.bool != 0) { return 1; } else return 0;
-        case STR: if (var->data.str != NULL) { return trueOrFalse(var->data.str); } else return 0;
-        default: return 0;
-    }
-}
-
 void convert(variable *var, int type) {
     DEBUG_PRINTF("\nConverted from type %d to type %d\n", var->type, type);
     if (var->type != type) {
@@ -765,11 +768,11 @@ void convert(variable *var, int type) {
             int truth = var->data.bool;
             if (type == NUM) { var->data.num = (double)truth; }
             else if (type == STR) {
-                if (truth) var->data.str = strdup("true");
-                if (!truth) var->data.str = strdup("false");
+                if (truth) var->data.str = stroustrup("true");
+                if (!truth) var->data.str = stroustrup("false");
             }
         } else if (var->type == STR) {
-            char *temp = strdup(var->data.str); if (var->data.str != NULL) { free(var->data.str); }
+            char *temp = stroustrup(var->data.str); if (var->data.str != NULL) { free(var->data.str); }
             if (type == BOOL) { var->data.bool = trueOrFalse(temp); }
             else if (type == NUM) { var->data.num = (double)atof(temp); }
             free(temp);
@@ -816,7 +819,7 @@ void setVar(variable *var, int type, char* value, double num, int bool) {
     if (type == IN) { /* let the user type whatever bullshit is on their minds */
         type = STR; val = grabUserInput(100);
     } else if (type == STR) { 
-        val = strdup(value); 
+        val = stroustrup(value); 
     }
     set_variable_value(var, type, val, num, bool);
     if (val) free(val);
@@ -829,7 +832,7 @@ void equalityCheckVarVsConst(HashMap *varMap, char **arguments, int flip) {
     variable *var1 = searchHashMap(varMap, arguments[1]), var2;
     int output = 0, type = grabType(arguments[0]); var2.type = type; var2.data.str = NULL;
     if (type == NUM) { var2.data.num = (double)atof(arguments[2]); }
-    else if (type == STR) { var2.data.str = strdup(arguments[2]); }
+    else if (type == STR) { var2.data.str = stroustrup(arguments[2]); }
     else if (type == BOOL) { var2.data.bool = trueOrFalse(arguments[2]); } 
     if (var1 == NULL) { cry("No variable!"); }
     output = flip ? !areTwoVarsEqual(var1, &var2) : areTwoVarsEqual(var1, &var2);
@@ -848,7 +851,7 @@ void equalityCheckVarVsVar(variable *var1, variable *var2, int flip) {
 }
 
 void jumpConditionally(int *location, variable *var, int *programCounter, int flip) {
-    int allowed = checkVarTruthiness(var);
+    int allowed = boolFromVar(var);
     if (flip) { allowed = !allowed; }
     if (allowed) labelJump(location, programCounter);
 }
@@ -923,9 +926,9 @@ void compareBools(HashMap *varMap, char **arguments, char operation, char flip) 
     variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]);
     int operand1 = 0; int operand2 = 0;
     if (var1 == NULL) { cry("No variable!"); } /* can't save SHIT if you dont have a variable */
-    else { operand1 = checkVarTruthiness(var1); }
+    else { operand1 = boolFromVar(var1); }
     if (var2 == NULL) { if (grabType(arguments[0])) {operand2 = trueOrFalse(arguments[2]);} else { operand2 = atoi(arguments[2]); }}
-    else { operand2 = checkVarTruthiness(var2); }
+    else { operand2 = boolFromVar(var2); }
     if (var1->type == STR && var1->data.str != NULL) free(var1->data.str);
     var1->type = BOOL;
     switch (operation) {
@@ -1002,7 +1005,6 @@ void loadList(HashMap *listMap, char *name, char *path) {
 void listAppendConstant(list *li, char **arguments, int argumentCount) {
     int type = grabType(arguments[1]);
     variable var; var.type = type;
-    if (!li) cry("penis");
     if (type == NUM) { var.data.num = (double)atof(arguments[2]); }
     else if (type == BOOL) { var.data.bool = trueOrFalse(arguments[2]); }
     else if (type == STR) { var.data.str = joinStringsSentence(arguments, argumentCount, 2); }
@@ -1041,7 +1043,7 @@ void copyList(HashMap *listMap, char *dest, list *src) {
 }
 
 void executeFunction(openFile *caller, char **arguments, int argumentCount) { /* monolith */
-    int returnSpot = caller->programCounter, i, varCount = 0, listCount = 0; 
+    int returnSpot = caller->programCounter, i, varCount = 0, listCount = 0, varIndex = 0, listIndex = 0;  /* ahhhh yes, we love ANSI "no mixed code with declarations!" C. */
     function *func = searchHashMap(&caller->functions, arguments[0]);
     /* we need to ensure that even in functions in function, it will retain the data till we ACTUALLY need to be rid of it                                          */
     /* this, however, comes at the cost of performance. however, this performance penalty is made up for in the lack of need to modify other aspects of the code.   */
@@ -1062,102 +1064,57 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
             else if (varType == 'v' || varType == 's' || varType == 'b' || varType == 'n') { varCount += 1; }
             else { free(tempNames); handleError("invalid type specification", 30, 0, caller); }
         }    
-        /* i can condense this logic later, but this is a. for prototyping b. testing c. not having an unreadable mess */    
-        if (listCount > 0) {
-            int index = 0;
-            listNames = (char **)mallocate(sizeof(char *) * listCount); listPtrs = (list **)callocate(varCount, sizeof(list *));
-            for (i = 0; i < func->parameterCount; i++) { 
-                if (types[i] == 'l') { 
-                    list *list = searchHashMap(&caller->lists, arguments[i * 2 + 2]), *test;
-                    listNames[index] = tempNames[i]; 
-                    if (list == NULL) { free(tempNames); free(listNames); handleError("list expected", 26, 0, caller); }
-                    listPtrs[index] = list;
-                    test = searchHashMap(&caller->lists, listNames[index]);
-                    if (test != NULL) { deleteItemFromMap(&caller->lists, listNames[index]); } /* there shouldn't be any other $i vars */
-                    addItemToMap(&caller->lists, list, listNames[index], NULL);  /* we don't free the item itself because it's simply an alias */
-                    index += 1;
+        if (listCount > 0) { listNames = (char **)mallocate(sizeof(char *) * listCount); listPtrs = (list **)callocate(listCount, sizeof(list *)); } 
+        if (varCount > 0) { varNames = (char **)mallocate(sizeof(char *) * varCount); varPtrs = (variable **)callocate(varCount, sizeof(variable *)); }
+        for (i = 0; i < func->parameterCount; i++) { 
+            if (types[i] == 'l') { 
+                list *list = searchHashMap(&caller->lists, arguments[i * 2 + 2]), *test;
+                listNames[listIndex] = tempNames[i]; 
+                if (list == NULL) { free(tempNames); free(listNames); if (varNames) { free(varNames); } handleError("list expected", 26, 0, caller); }
+                listPtrs[listIndex] = list;
+                test = searchHashMap(&caller->lists, listNames[listIndex]);
+                if (test != NULL) { deleteItemFromMap(&caller->lists, listNames[listIndex]); } 
+                addItemToMap(&caller->lists, list, listNames[listIndex], NULL);  /* we don't free the item itself because it's simply an alias */
+                listIndex += 1;
+            } else { /* since we check types earlier it's safe to assume any non-'l' type will be a var */
+                variable *newVar = (variable *)callocate(1, sizeof(variable)), *old, *test;
+                varNames[varIndex] = tempNames[i]; varPtrs[varIndex] = newVar;
+                switch (types[i]) {
+                    case 'v':  old = searchHashMap(&caller->variables, arguments[i * 2 + 2]); if (old == NULL) { free(tempNames); freeVariable(newVar); if (listNames) { free(listNames); } free(varNames); handleError("var expected", 26, 0, caller); } varcpy(newVar, old); break;
+                    case 'n': newVar->data.num = (double)atof(arguments[i * 2 + 2]); newVar->type = NUM; break;
+                    case 's': newVar->type = STR; newVar->data.str = stroustrup(arguments[i * 2 + 2]); break;
+                    case 'b': newVar->type = BOOL; newVar->data.bool = trueOrFalse(arguments[i * 2 + 2]); break;
                 }
-            }
-        } 
-        if (varCount > 0) {
-            int index = 0;
-            varNames = (char **)mallocate(sizeof(char *) * varCount); varPtrs = (variable **)callocate(varCount, sizeof(variable *));
-            for (i = 0; i < func->parameterCount; i++) {
-                if (types[i] != 'l') { /* since we check types earlier it's safe to assume any non-'l' type will be a var */
-                    variable *newVar = (variable *)callocate(1, sizeof(variable)), *old, *test;
-                    varNames[index] = tempNames[i]; varPtrs[index] = newVar;
-                    DEBUG_PRINTF("%c\n", types[i]);
-                    switch (types[i]) {
-                        case 'v': 
-                            old = searchHashMap(&caller->variables, arguments[i * 2 + 2]);
-                            if (old == NULL) { free(tempNames); freeVariable(newVar); /* if (listNames) { free(listNames); } */ free(varNames); handleError("var expected", 26, 0, caller); }
-                            varcpy(newVar, old);
-                            break;
-                        case 'n':
-                            newVar->data.num = (double)atof(arguments[i * 2 + 2]);
-                            newVar->type = NUM;
-                            break;
-                        case 's':
-                            newVar->type = STR;
-                            newVar->data.str = strdup(arguments[i * 2 + 2]);
-                            break;
-                        case 'b':
-                            newVar->type = BOOL;
-                            newVar->data.bool = trueOrFalse(arguments[i * 2 + 2]);
-                            break;
-                    }
-                    test = searchHashMap(&caller->variables, varNames[index]);
-                    if (test != NULL) { /* there shouldn't be any other $i vars */
-                        if (test->data.str != NULL && test->type == STR) free(test->data.str);
-                        deleteItemFromMap(&caller->variables, varNames[index]); 
-                    }
-                    addItemToMap(&caller->variables, newVar, varNames[index], NULL);
-                    index += 1;
+                test = searchHashMap(&caller->variables, varNames[varIndex]);
+                if (test != NULL) { /* there shouldn't be any other $i vars */
+                    if (test->data.str != NULL && test->type == STR) free(test->data.str);
+                    deleteItemFromMap(&caller->variables, varNames[varIndex]); 
                 }
+                addItemToMap(&caller->variables, newVar, varNames[varIndex], NULL);
+                varIndex += 1;
             }
         }
         free(tempNames); free(types);
     }
     caller->programCounter = func->start + 1;
     while (strcmp(caller->instructions[caller->programCounter]->operation, "ret")) {
-        for (i = 0; i < varCount; i++) {
-            if (searchHashMap(&caller->variables, varNames[i]) == NULL) addItemToMap(&caller->variables, varPtrs[i], varNames[i], NULL); /* re-adds any missing variables, should another function have prematurely deleted/overwritten it */
-        }
-        for (i = 0; i < listCount; i++) {
-            if (searchHashMap(&caller->lists, listNames[i]) == NULL) addItemToMap(&caller->lists, listPtrs[i], listNames[i], NULL);
-        }
+        for (i = 0; i < varCount; i++) { if (searchHashMap(&caller->variables, varNames[i]) == NULL) addItemToMap(&caller->variables, varPtrs[i], varNames[i], NULL); } /* re-adds any missing variables, should another function have prematurely deleted/overwritten it */
+        for (i = 0; i < listCount; i++) { if (searchHashMap(&caller->lists, listNames[i]) == NULL) { addItemToMap(&caller->lists, listPtrs[i], listNames[i], NULL); }}
         executeInstruction(caller); caller->programCounter += 1;
         if (caller->programCounter == func->end) caller->programCounter = func->start + 2;
     }
-    arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount;
-    caller->programCounter = returnSpot;
+    arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount; /* grab the current arguments */
     if (argumentCount >= 2) {
         char *retName = (char *)callocate(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]); 
         retName[0] = '$'; strcat(retName, funcName);
         if (returnType != 'l') {
             variable *returnedVar = (variable *)callocate(1, sizeof(variable)), *old;
             switch (returnType) {
-                case 'v':
-                    old = searchHashMap(&caller->variables, arguments[1]);
-                    if (old == NULL) { freeVariable(returnedVar); handleError("var expected", 229, 0, caller); }
-                    varcpy(returnedVar, old);
-                    break;
-                case 'n':
-                    returnedVar->type = NUM;
-                    returnedVar->data.num = (double)atof(arguments[1]);
-                    break;
-                case 's':
-                    returnedVar->type = STR;
-                    returnedVar->data.str = strdup(arguments[1]);
-                    break;
-                case 'b':
-                    returnedVar->type = BOOL;
-                    returnedVar->data.bool = trueOrFalse(arguments[1]);
-                    break;
-                default:
-                    freeVariable(returnedVar);
-                    handleError("invalid type specification", 30, 0, caller);
-                    break;
+                case 'v': old = searchHashMap(&caller->variables, arguments[1]); if (old == NULL) { freeVariable(returnedVar); handleError("var expected", 229, 0, caller); } varcpy(returnedVar, old); break;
+                case 'n': returnedVar->type = NUM; returnedVar->data.num = (double)atof(arguments[1]); break;
+                case 's': returnedVar->type = STR; returnedVar->data.str = stroustrup(arguments[1]); break;
+                case 'b': returnedVar->type = BOOL; returnedVar->data.bool = trueOrFalse(arguments[1]); break;
+                default: freeVariable(returnedVar); handleError("invalid type specification", 30, 0, caller); break;
             }
             addItemToMap(&caller->variables, returnedVar, retName, (void(*)(void *))freeVariable);
         } else {
@@ -1169,7 +1126,8 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
     }
     for (i = 0; i < varCount; i++) { deleteItemFromMap(&caller->variables, varNames[i]); free(varNames[i]); freeVariable(varPtrs[i]); }
     for (i = 0; i < listCount; i++) { deleteItemFromMap(&caller->lists, listNames[i]); free(listNames[i]); }
-    if (varCount > 0) { free(varNames); free(varPtrs); } if (listCount > 0) { free(listNames); free(varPtrs); }
+    if (varCount > 0) { free(varNames); free(varPtrs); } if (listCount > 0) { free(listNames); free(listPtrs); }
+    caller->programCounter = returnSpot; /* resume execution */
 }
 
 /* console i/o      */
@@ -1183,7 +1141,7 @@ void fio_write(openFile *file) { freeAndWrite(file->instructions[file->programCo
 void fio_writev(openFile *file) { writeFromVar(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), file->instructions[file->programCounter]->arguments[0]); }
 /* misc             */
 void etc_not(openFile *file) { negateBoolean(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]));  }
-void etc_quit(openFile *file) { freeFile(*file); freeInstructionSet(&ValidInstructions); exit(0); }
+void etc_quit(openFile *file) { if (!commandPrompt) { freeFile(*file); freeInstructionSet(&ValidInstructions); exit(0); } else { cleanFile(file); commandPrompt = 2; }} /* 2 signifies it wants to ENTER the cmd prompt */
 /* jumps            */
 void jmp_jump(openFile *file) { labelJump(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), &file->programCounter); }
 void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter]->arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]), &file->programCounter, 0); }
@@ -1320,7 +1278,7 @@ void executeInstruction(openFile *cur) { /* all of these are defined up here so 
 
 void executeFile(openFile *current, int doFree) {
     preprocessLabels(current); current->lists = create_hashmap(1); current->variables = create_hashmap(10); current->functions = create_hashmap(1);
-    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); }
+    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); if (commandPrompt == 2) { break; }}
     if (doFree) freeFile(*current);
 }
 

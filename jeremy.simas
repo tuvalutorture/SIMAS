@@ -288,6 +288,29 @@ fun set_mood 0;
     ret;
 end FUN;
 
+fun print_time 2;
+    set num comp 10;
+    gt num comp $1;
+    jumpnv hour_print comp;
+    
+    printc 0;
+    
+    label hour_print;
+    print $1;
+
+    printc :;
+
+    set num comp 10;
+    gt num comp $2;
+    jumpnv min_print comp;
+
+    printc 0;
+
+    label min_print;
+    print $2;
+    ret;
+end FUN;
+
 fun print_status 0;
     copy jeremy_mood mood_idx;
     add num mood_idx 1;
@@ -302,18 +325,14 @@ fun print_status 0;
     printc . you have ;
     print money;
     prints;
-    printc pounds.;
-    println;
+    printc pounds.\n;
 
     printc it is ;
-    print hour;
-    printc :;
-    print minute;
+    call print_time v hour v minute;
     prints;
     printc on ;
     print day_str;
-    printc .;
-    println;
+    printc .\n;
 
     copy fired tmpa;
     eqc num tmpa 0;
