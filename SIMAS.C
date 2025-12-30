@@ -83,11 +83,11 @@ struct HashMap {
 typedef struct command command;
 typedef struct variable variable;
 typedef struct instruction instruction;
-typedef struct openFile openFile;
 typedef struct function function;
+typedef struct list list; 
+typedef struct openFile openFile;
 typedef struct operator operator;
 typedef struct InstructionSet InstructionSet;
-typedef struct LinkedList list; /* seperate name to avoid confusion */
 
 struct command { /* spoingus my beloved */
     char *(*commandPointer)(instruction*, openFile*); 
@@ -117,6 +117,11 @@ struct function {
     int parameterCount;
 };
 
+struct list { /* keeps them lookup times objectively speedy as fawk */
+    variable **variables;
+    int elements;
+}; 
+
 struct openFile {
     char *path;
     instruction **instructions;
@@ -140,6 +145,8 @@ struct InstructionSet {
 
 InstructionSet ValidInstructions;
 HashMap ValidCommands;
+
+HashMap garbage;
 
 /* preprocessor fuckery so that i can debug exactly where all my damn allocations are   */
 /* set the debugging define to 0 if you don't want the cycle loss with this             */
@@ -328,7 +335,7 @@ void freeInstruction(instruction *inst) {
 
 void freeVariable(variable *var) { if (var->type == STR && var->data.str) { free(var->data.str); } free(var); }
 void freeLinkedList(LinkedList *lis) { listItem *current = lis->first; while (current != NULL) { listItem *next = current->next; free(current); current = next; }}
-void freeList(list *lis) { int i; listItem *current = lis->first; for (i = 0; i < lis->elements; i++) { listItem *next = current->next; freeVariable((variable *)current->data); current = next; } freeLinkedList(lis); free(lis); }
+void freeList(list *lis) { int i; for (i = 0; i < lis->elements; i++) { freeVariable(lis->variables[i]); } free(lis->variables); free(lis); }
 void freeHashMap(HashMap map) { /* Noli manere in memoria - Saevam iram et dolorem - Ferum terribile fatum - Ille iterum veniet */
     int i;
     if (map.items == NULL) return;
@@ -425,7 +432,7 @@ int trueOrFalse(char *string) {
 }
 
 void set_variable_value(variable *var, int type, char *value, double num, int bool) { /* too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3 */
-    if (var->type == STR) free(var->data.str); 
+    if (var->type == STR && var->data.str) free(var->data.str); 
     var->data.str = NULL;
     if (type == NUM) { var->data.num = num; }
     else if (type == BOOL) { var->data.bool = bool; }
@@ -483,31 +490,20 @@ int grabType(char *input) {
 }
 
 void appendElementToList(list *li, variable *var) {
-    listItem *new = (listItem *)mallocate(sizeof(listItem));
-    new->data = (variable *)callocate(1, sizeof(variable));
-    new->prev = NULL; new->next = NULL;
-    varcpy((variable *)new->data, var);
-    if (li->elements == 0) { 
-        li->first = new; 
-    }
-    else insertItem(new, li->last, NULL);
-    li->last = new; li->elements += 1;
+    variable *new = (variable *)callocate(1, sizeof(variable)), **tmp;
+    varcpy((variable *)new, var);
+    tmp = (variable **)reallocate(li->variables, (li->elements + 1) * sizeof(variable *)); /* grow that bitch */
+    if (tmp) { li->variables = tmp; } else { cry("reallocation failed!\n"); }
+    li->variables[li->elements] = new; li->elements += 1;
 }
 
 void removeElementFromList(list *li, int element) {
-    listItem *target;
-    if (element < 1) { 
-        target = li->first; 
-        if (li->first->next != NULL) { 
-            li->first = li->first->next; 
-            li->first->prev = NULL;
-        }
-    } 
-    else { target = traverseList(element - 1, 0, li->first); }
-    if (target == li->last && li->last != li->first) li->last = target->prev;
-    freeVariable((variable *)target->data);
+    variable **tmp;
+    freeVariable(li->variables[element]);
+    memmove(li->variables + element, li->variables + element + 1, (li->elements - element - 1) * sizeof(variable *));
+    tmp = (variable **)reallocate(li->variables, (li->elements - 1) * sizeof(variable *)); /* shrink that bitch */
+    if (tmp) { li->variables = tmp; } else { cry("reallocation failed!\n"); }
     li->elements -= 1;
-    deleteItem(target);
 }
 
 char *grabStringOfNumber(double num) {
@@ -596,7 +592,7 @@ void strip(char *string, char character) {
 } 
 
 int isWhitespace(char check) {
-    if (check == ' ' || check == '\t' || check == '\r' || check == '\n' || check == '\0') return 1;
+    if (isspace(check) || check == '\0') return 1; /* same thang but also checks nullterms */
     return 0;
 }
 
@@ -932,36 +928,32 @@ void compareBools(HashMap *varMap, char **arguments, char operation, char flip) 
     if (var1->type == STR && var1->data.str != NULL) free(var1->data.str);
     var1->type = BOOL;
     switch (operation) {
-        case '&': var1->data.bool = flip ? (operand1 && operand2) : !(operand1 && operand2); break;
-        case '|': var1->data.bool = flip ? (operand1 || operand2) : !(operand1 || operand2); break;
+        case '&': var1->data.bool = flip ? !(operand1 && operand2) : (operand1 && operand2); break;
+        case '|': var1->data.bool = flip ? !(operand1 || operand2) : (operand1 || operand2); break;
         case '!': var1->data.bool = (operand1 != operand2); break;
         default: var1->data.bool = 0; break;
     }
 }
 
-char *formatList(LinkedList li) {
-    char *final; int i; size_t bytes = 3; listItem *current = li.first;
+char *formatList(list li) {
+    char *final; int i; size_t bytes = 3;
     for (i = 0; i < li.elements; i++) {
-        DEBUG_PRINTF("\n\n%d\n\n", i);
-        bytes += stringLenFromVar(*(variable *)current->data) + 2; 
-        if (((variable *)current->data)->type == STR) { bytes += 2; } /* "" */
-        current = current->next;
+        bytes += stringLenFromVar(*li.variables[i]) + 2; 
+        if (li.variables[i]->type == STR) { bytes += 2; } /* quotes */
     }
-    final = (char *)mallocate(bytes); if (final == NULL) cry("List Formatting failed!");
+    final = (char *)malloc(bytes); if (final == NULL) cry("List Formatting failed!");
     final[0] = '\0';
 
     strcat(final, "[");
-    current = li.first;
     for (i = 0; i < li.elements; i++) {
-        char *temp = stringFromVar((variable *)current->data);
+        char *temp = stringFromVar(li.variables[i]);
         if (temp) {
-            if (((variable *)current->data)->type == STR) strcat(final, "\"");
+            if (li.variables[i]->type == STR) strcat(final, "\"");
             strcat(final, temp);
-            if (((variable *)current->data)->type == STR) strcat(final, "\"");
+            if (li.variables[i]->type == STR) strcat(final, "\"");
             free(temp);
             if (i + 1 != li.elements) strcat(final, ","); /* make sure no trailing comma is left */
         }
-        current = current->next;
     }
     strcat(final, "]");
     return final;
@@ -1012,7 +1004,7 @@ void listAppendConstant(list *li, char **arguments, int argumentCount) {
 }
 
 variable create_variable_with_value(char *name, int type, char *value, double num, int bool) {
-    variable var;
+    variable var; var.type = type;
     switch (type) {
         case STR: set_variable_value(&var, type, value, 0.0, 0); break;
         case NUM: set_variable_value(&var, type, NULL, num, 0); break;
@@ -1081,7 +1073,7 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
                 varNames[varIndex] = tempNames[i]; varPtrs[varIndex] = newVar;
                 switch (types[i]) {
                     case 'v':  old = searchHashMap(&caller->variables, arguments[i * 2 + 2]); if (old == NULL) { free(tempNames); freeVariable(newVar); if (listNames) { free(listNames); } free(varNames); handleError("var expected", 26, 0, caller); } varcpy(newVar, old); break;
-                    case 'n': newVar->data.num = (double)atof(arguments[i * 2 + 2]); newVar->type = NUM; break;
+                    case 'n': newVar->type = NUM; newVar->data.num = (double)atof(arguments[i * 2 + 2]); break;
                     case 's': newVar->type = STR; newVar->data.str = stroustrup(arguments[i * 2 + 2]); break;
                     case 'b': newVar->type = BOOL; newVar->data.bool = trueOrFalse(arguments[i * 2 + 2]); break;
                 }
@@ -1174,13 +1166,13 @@ void cmp_xor(openFile *file) { compareBools(&file->variables, file->instructions
 void lis_del(openFile *file) { list *li; int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter]->arguments[1]); } li = searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]); if (index > li->elements) { handleError("invalid index", 92, 0, file); } else { removeElementFromList(li, index - 1); }}
 void lis_appv(openFile *file) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[2])); }
 void lis_show(openFile *file) { freeAndPrint(formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
-void lis_new(openFile *file) { list *new = (list *)callocate(1, sizeof(LinkedList)); addItemToMap(&file->lists, new, file->instructions[file->programCounter]->arguments[0], (void (*)(void *))freeList); }
-void lis_upv(openFile *file) { int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter]->arguments[1]); } varcpy((variable *)traverseList(index - 1, 0, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data, searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[3])); }
-void lis_acc(openFile *file) { int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter]->arguments[1]); } varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[2]), (variable *)traverseList(index - 1, 0, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data); }
+void lis_new(openFile *file) { list *new = (list *)callocate(1, sizeof(list)); addItemToMap(&file->lists, new, file->instructions[file->programCounter]->arguments[0], (void (*)(void *))freeList); }
+void lis_upv(openFile *file) { int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter]->arguments[1]); } varcpy(((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->variables[index - 1], searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[3])); }
+void lis_acc(openFile *file) { int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter]->arguments[1]); } varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[2]), ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->variables[index - 1]); }
 void lis_load(openFile *file) { loadList(&file->lists, file->instructions[file->programCounter]->arguments[0], file->instructions[file->programCounter]->arguments[1]); }
 void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), NUM, NULL, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->elements, 0); }
 void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[1], formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
-void lis_upc(openFile *file) { char **arguments = file->instructions[file->programCounter]->arguments; int index; variable *src = searchHashMap(&file->variables, arguments[1]); variable var = create_variable_with_value(NULL, grabType(arguments[2]), joinStringsSentence(arguments, file->instructions[file->programCounter]->argumentCount, 4), (double)atof(arguments[4]), trueOrFalse(arguments[3])); if (src != NULL) { index = numFromVar(src); } else { index = atoi(arguments[1]); } varcpy((variable *)traverseList(index - 1, 0, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->first)->data, &var); }
+void lis_upc(openFile *file) { char **arguments = file->instructions[file->programCounter]->arguments, *sentence = joinStringsSentence(arguments, file->instructions[file->programCounter]->argumentCount, 3); int index; variable *src = searchHashMap(&file->variables, arguments[1]); variable var = create_variable_with_value(NULL, grabType(arguments[2]), sentence, (double)atof(arguments[3]), trueOrFalse(arguments[3])); if (src != NULL) { index = numFromVar(src); } else { index = atoi(arguments[1]); } varcpy(((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->variables[index - 1], &var); free(sentence); } 
 void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 /* function ops     */
 void fun_fun(openFile *file) { registerFunction(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }

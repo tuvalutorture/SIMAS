@@ -22,7 +22,11 @@ in front of any instruction. However, SIMAS will ignore your politeness by ignor
 
 For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<br>
 
-All occurences of `\n` within string constants (such as PRINTC) will be replaced with a new line.
+All occurences of `\n` or `\r` within string constants (such as PRINTC) will be replaced with a new line.
+
+In operations like `WRITE` or `PRINTC` do *not* need quotes to wrap string literals or file pathing.
+
+All statements, including function definitions or comments *must* end in semicolons.
 
 ## DOCUMENTATION 
 ### DATA TYPES 
@@ -52,6 +56,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 1: name of the label
 
 ### Math
+Note: ALL math ops require both operands going in are NUM type. 
 
 #### - add
 * add the value of OPERAND 2 and 3 (must be `num`) the value will be assigned to OPERAND 2
@@ -95,6 +100,7 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 * OPERAND 2: name of the variable whose contents will be written to the file.
 
 ### Comparison
+Note: all comparison ops will overwrite OPERAND 2 with a boolean variable. You must convert them from a boolean if using it in a math operation or other operation that requires a specific type.
 
 #### - and
 * performs logical operation AND on OPERAND 2 and 3; the value will be assigned to OPERAND 2
@@ -181,9 +187,10 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 ### Lists
 
 #### - list
-* list operations. lists are a special data structure that allows you to have multiple values in a single container. Indexing can be done both via constant numbers and variables. (CMAS only feature)
-* OPERAND 1: type of operation
-* OPERAND 2: name of the list
+* list operations. lists are a special data structure that allows you to have multiple values in a single container. 
+* Indexing, starting at 1, can be done both via constant numbers and variables. (CMAS only feature)
+* OPERAND 1: the operation to run
+* OPERAND 2: the name of the list to perform the operation on
 * All of the list operations:
     * `list new`
         * creates a new list
@@ -247,7 +254,8 @@ All occurences of `\n` within string constants (such as PRINTC) will be replaced
 #### - fun
 * define a function.
 * OPERAND 1: The name of the function
-* OPERAND 2: The amount of arguments accepted by the function.
+* OPERAND 2: The amount of arguments accepted by the function. 
+* Arguments will appear as $[arg number], starting from 1.
 
 #### - call
 * call a function
