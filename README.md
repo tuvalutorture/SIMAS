@@ -4,7 +4,7 @@
 
 License: GPLv3, which is the same as the [original SIMAS repo, which is also licensed under GPLv3](https://github.com/turrnut/simas).
 
-**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a semi-statically typed, high level procedural programming language  
+**SIMAS**, which is an acronym for **SIM**ple **AS**sembly, is a dynamically typed, high level procedural programming language  
 with a syntax that is inspired by the Assembly programming language.<br>
 In SIMAS, each line starts with an instruction, optionally followed by one or more operands, just like Assembly.<br>
 To run a SIMAS program, simply run ```./simas <filename(s)>```. <br>
@@ -21,12 +21,9 @@ If you want to be polite to SIMAS, you can add `PLEASE` (case-insensitive) and a
 in front of any instruction. However, SIMAS will ignore your politeness by ignoring `PLEASE`. <br>
 
 For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<br>
-
 All occurences of `\n` or `\r` within string constants (such as PRINTC) will be replaced with a new line.
-
 In operations like `WRITE` or `PRINTC` do *not* need quotes to wrap string literals or file pathing.
-
-All statements, including function definitions or comments *must* end in semicolons.
+All statements, including function definitions or comments **must** end in semicolons.
 
 ## DOCUMENTATION 
 ### DATA TYPES 
@@ -250,6 +247,7 @@ Note: all comparison ops will overwrite OPERAND 2 with a boolean variable. You m
 * This is useful in cases where you may need to print something right after using ```print```.
 
 ### Functions
+Note: Unlike labels, functions must be defined prior to use.
 
 #### - fun
 * define a function.
