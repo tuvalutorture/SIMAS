@@ -1,1 +1,1 @@
-gcc simas.c -o simas -Wall -Wextra -pedantic -g3 -O0 -I../includes -Wno-unused-parameter -std=c89
+gcc src/strings.c src/variables.c src/functions.c src/hashmap.c src/helpers.c src/runtime.c src/simas.c -o simas -Wall -Wextra -pedantic -g3 -O0 -I../includes -Wno-unused-parameter -std=c89
