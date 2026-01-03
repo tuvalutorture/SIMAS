@@ -8,13 +8,18 @@
 #include "variables.h"
 
 void registerFunction(openFile *caller, char **arguments, int argumentCount) {
-    int i; function *new = (function *)malloc(sizeof(function)); 
+    int i; function *new; 
     if (arguments[0][0] == '$') handleError("name is reserved", 99, 0, caller);
-    if (argumentCount < 2) { free(new); handleError("too little arguments", 57, 0, caller); }
+    if (argumentCount < 2) handleError("too little arguments", 57, 0, caller);
+    if (searchHashMap(&caller->functions, arguments[0]) != NULL) handleError("redefinition of function", 57, 0, caller);
+    new = (function *)malloc(sizeof(function));
     new->parameterCount = atoi(arguments[1]);
     new->start = caller->programCounter; 
-    for (i = caller->programCounter; i < caller->instructionCount; i++) { if (strcmp(caller->instructions[i]->operation, "end") == 0) { new->end = i; break; }}
-    if (i == new->start) { free(new); handleError("no end to function", 84, 0, caller); }
+    for (i = caller->programCounter + 1; i < caller->instructionCount; i++) { 
+        if (strcmp(caller->instructions[i]->operation, "fun") == 0) { free(new); handleError("cannot define function within function", 84, 0, caller); }
+        if (strcmp(caller->instructions[i]->operation, "end") == 0) { new->end = i; break; }
+    }
+    if (i == caller->instructionCount) { free(new); handleError("no end to function", 84, 0, caller); }
     addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
 }
 

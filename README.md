@@ -13,8 +13,13 @@ You can also run just ```./simas``` for the SIMAS command line.
 
 An demo program, Jeremy Simulator (```jeremy.simas```), is included to showcase CMAS' features & capability.
 
-**Additional Notes** <br>
+**Building**<br>
+Note: Building CMAS requires some form of GCC to be installed.
 
+To build CMAS, simply run ```build.sh```, and it will create an executable you can run. <br>
+If using on Microsoft Windows, instead use ```build.bat```.
+
+**Additional Notes** <br>
 SIMAS is case-sensitive, although instructions and data types are not. <br>
 
 If you want to be polite to SIMAS, you can add `PLEASE` (case-insensitive) and a space character
@@ -51,7 +56,6 @@ will be coerced into that new type & assigned to OPERAND 2.
 and MUST be kept in mind if attempting to write cross-compatible programs.
 * CMAS is whitespace-insensitive for tokenisation, so instructions may be split by multiple spaces, lines, etc. This differs from SIMASJS, which requires EXACTLY one space per token.
 * CMAS supports calling functions from within functions, which is NOT supported by SIMASJS and will often lead to an infinite loop of execution.
-* ***IMPORTANT!*** Function arguments start at $1 - In SIMASJS, however, they start at $0.
 
 # Links
 For instructions & datatypes, check <a href="DOCS.md">here.</a>

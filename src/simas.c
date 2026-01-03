@@ -33,9 +33,7 @@
 /*    can the sun just fucking collapse into a black hole already   */ 
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include "hashmap.h"
 #include "runtime.h"
 
 void dummy() { float f=0,*fp; fp=&f; printf("%f",*fp); } /* only needed for retarded systems like turbo c to trick it into bringing in float libs */

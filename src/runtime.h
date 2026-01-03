@@ -50,14 +50,8 @@ extern InstructionSet ValidInstructions;
 
 void cry(char *msg);
 void freeInstructionSet(InstructionSet *isa);
-void freeInstruction(instruction *inst);
-void cleanFile(openFile *file);
-void freeFile(openFile file);
 void handleError(char *errorMsg, int errCode, int fatal, openFile *file);
 void snadmwithc(void);
-int findNumberArgs(instruction *inst, InstructionSet isa);
-instruction *add_instruction(char *inst, char *arguments[], char *prefix, int args);
-instruction *parseInstructions(char *string, InstructionSet isa);
 openFile openSimasFile(const char path[]);
 void beginCommandLine(char *entryMsg, openFile *passed);
 void setUpCommands(void);

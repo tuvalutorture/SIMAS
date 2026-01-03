@@ -302,3 +302,8 @@ However, you CAN create a POINTER to a POINTER, as well as an ALIAS to an ALIAS.
 * OPERAND 1: the variable name
 * OPERAND 2: the type of OPERAND 1 will be assigned to this variable as a string
 
+#### - import
+* import another SIMAS file
+* Note: this also includes all variable names and labels, so make sure to not redefine variables, list names, functions, etc. You may also only import a file once.
+* Note 2: import file pathing is relative to where you are RUNNING SIMAS from, NOT where your SIMAS file is.
+* OPERAND 1: the file path

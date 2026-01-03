@@ -61,7 +61,6 @@ void set_variable_value(variable *var, int type, char *value, double num, int bo
         if (var->data->str == NULL) { cry("nOnOOOO ze MALLOC faILEEEED"); }
     }
     *var->type = type;
-    DEBUG_PRINTF("\nvariable now has value %s, %f, %d\n", value, (float)num, bool);
 }
 
 /* ze horsemen of type feckery */

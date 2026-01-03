@@ -62,13 +62,35 @@ void handleError(char *errorMsg, int errCode, int fatal, openFile *file) { /* mo
     }
 }
 
+void preprocessImports(openFile *new) {
+    int i; HashMap imports = create_hashmap(10); 
+    addItemToMap(&imports, NULL, new->path, NULL); 
+    for (i = 0; i < new->instructionCount; i++) {
+        DEBUG_PRINTF("%d\n", i);
+        if (strcmp(new->instructions[i]->operation, "import") == 0) {
+            openFile temp;
+            memset(&temp, 0, sizeof(openFile));
+            if (searchHashMap(&imports, new->instructions[i]->arguments[0]) != NULL) { new->programCounter = i; handleError("cannot import a file more than once", 438, 0, new); }
+            temp = openSimasFile(new->instructions[i]->arguments[0]);
+            new->instructions = (instruction **)realloc(new->instructions, (new->instructionCount + temp.instructionCount - 1) * sizeof(instruction *));
+            memmove(new->instructions + i + temp.instructionCount, new->instructions + i + 1, (new->instructionCount - i - 1) * sizeof(instruction *));
+            freeInstruction(new->instructions[i]); /* remove the current import instruction */
+            memmove(new->instructions + i, temp.instructions, temp.instructionCount * sizeof(instruction *));
+            addItemToMap(&imports, temp.path, temp.path, free); new->instructionCount += temp.instructionCount - 1;
+            free(temp.instructions);
+        }
+    }
+    freeHashMap(imports);
+}
+
 void preprocessLabels(openFile *new) {
     int i;
     new->labels = create_hashmap(new->labels.buckets); 
     for (i = 0; i < new->instructionCount; i++) {
         if (strcmp(new->instructions[i]->operation, "label") == 0) { 
-            int *location = (int *)malloc(sizeof(int));
-            *location = i - 1;
+            int *location;
+            if (searchHashMap(&new->labels, new->instructions[i]->arguments[0]) != NULL) { new->programCounter = i; handleError("redefinition of label", 85, 0, new); }
+            location = (int *)malloc(sizeof(int)); *location = i - 1;
             if (new->instructions[i]->arguments[0][0] == '$') { free(location); new->programCounter = i; handleError("name is reserved", 99, 0, new); }
             addItemToMap(&new->labels, location, new->instructions[i]->arguments[0], free);
         }
@@ -219,6 +241,25 @@ void beginCommandLine(char *entryMsg, openFile *passed) {
     exit(0);
 }
 
+void executeInstruction(openFile *cur) { /* all of these are defined up here so this function can operate independently of any files */
+    operation *found; char *string;
+    if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return;
+    string = buildStringFromInstruction(cur->instructions[cur->programCounter]);
+    DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", string, cur->programCounter);
+    found = searchHashMap(&ValidInstructions.operations, string); free(string);
+    if (found != NULL && found->functionPointer != NULL) { (found->functionPointer)(cur); }
+}
+
+void executeFile(openFile *current, int doFree) {
+    preprocessImports(current); 
+    if (current->labels.buckets > 0) preprocessLabels(current); 
+    current->lists = create_hashmap(10); current->variables = create_hashmap(10); current->functions = create_hashmap(10); /* 10 to provide breathing room before rehashing */
+    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); if (commandPrompt == 2) { break; }}
+    if (doFree) freeFile(*current);
+}
+
+/* here for ctrl flow */
+
 void labelJump(int *location, int *programCounter) { *programCounter = *location; }
 void jumpConditionally(int *location, variable *var, int *programCounter, int flip) {
     int allowed = boolFromVar(var);
@@ -226,6 +267,7 @@ void jumpConditionally(int *location, variable *var, int *programCounter, int fl
     if (allowed) labelJump(location, programCounter);
 }
 
+/* funcs...         */
 /* console i/o      */
 void con_prints(openFile *file) { putc(' ', stdout); }
 void con_println(openFile *file) { puts(""); }
@@ -348,11 +390,12 @@ char *cmd_help(instruction *inst, openFile *file) {
 }
 
 void setUpStdlib(void) {
-    ValidInstructions.operations = create_hashmap(53); ValidInstructions.prefixes = create_hashmap(1);
+    ValidInstructions.operations = create_hashmap(54); ValidInstructions.prefixes = create_hashmap(1);
     addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
     addOperation("label", NULL, NULL, 1); /* no-op */
     addOperation("end", NULL, NULL, 1); /* no-op */
     addOperation("ret", NULL, NULL, 0); /* no-op */
+    addOperation("import", NULL, NULL, 1); /* no-op */
     addOperation("print", NULL, (void(*)(void*))con_printv, 1); 
     addOperation("println", NULL, (void(*)(void*))con_println, 0);
     addOperation("prints", NULL, (void(*)(void*))con_prints, 0); 
@@ -416,19 +459,4 @@ void setUpCommands() {
     addCommand("!edit", cmd_edit);
     addCommand("!help", cmd_help);
     addCommand("!debug", cmd_debug);
-}
-
-void executeInstruction(openFile *cur) { /* all of these are defined up here so this function can operate independently of any files */
-    operation *found; char *string;
-    if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return;
-    string = buildStringFromInstruction(cur->instructions[cur->programCounter]);
-    DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", string, cur->programCounter);
-    found = searchHashMap(&ValidInstructions.operations, string); free(string);
-    if (found != NULL && found->functionPointer != NULL) { (found->functionPointer)(cur); }
-}
-
-void executeFile(openFile *current, int doFree) {
-    preprocessLabels(current); current->lists = create_hashmap(1); current->variables = create_hashmap(10); current->functions = create_hashmap(1);
-    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); if (commandPrompt == 2) { break; }}
-    if (doFree) freeFile(*current);
 }
