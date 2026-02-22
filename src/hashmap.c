@@ -92,6 +92,19 @@ void *searchHashMap(HashMap *map, char *key) {
     else return NULL;
 }
 
+char *searchForKey(HashMap *map, void *item) {
+    int i;
+    for (i = 0; i < map->buckets; i++) {
+        listItem *loc = map->items[i].first;
+        if (map->items[i].first == NULL) continue;
+        while (loc != NULL) {
+            if (loc->data == item) return (((hashMapItem *)loc->data)->key);
+            loc = loc->next;
+        }
+    }
+    return NULL;
+}
+
 void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*)) {
     LinkedList *location = grabHashMapLocation(map, key); listItem *newListItem; hashMapItem *newItem;
     if ((float)map->elementCount / (float)map->buckets > 0.75) { /* sex i3 piston - bringal */

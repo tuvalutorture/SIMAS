@@ -13,9 +13,8 @@ typedef struct instruction instruction;
 typedef struct openFile openFile;
 
 struct instruction {
+    operation *op;
     char **arguments;
-    char *operation;
-    char *prefix;
     int argumentCount;
 };
 
@@ -31,7 +30,8 @@ struct openFile {
 };
 
 struct command { /* spoingus my beloved */
-    char *(*commandPointer)(instruction*, openFile*); 
+    instruction *inst;
+    openFile *file;
 };
 
 struct operation {
@@ -52,7 +52,7 @@ void cry(char *msg);
 void freeInstructionSet(InstructionSet *isa);
 void handleError(char *errorMsg, int errCode, int fatal, openFile *file);
 void snadmwithc(void);
-openFile openSimasFile(const char path[]);
+openFile openSimasFile(char *path);
 void beginCommandLine(char *entryMsg, openFile *passed);
 void setUpCommands(void);
 void setUpStdlib(void);

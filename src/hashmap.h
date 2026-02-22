@@ -41,6 +41,7 @@ LinkedList *grabHashMapLocation(HashMap *map, char *key);
 void changeHashMap(HashMap *map, int extensionCount);
 listItem *grabHashMapItem(HashMap *map, char *key);
 void *searchHashMap(HashMap *map, char *key);
+char *searchForKey(HashMap *map, void *item);
 void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*));
 void deleteItemFromMap(HashMap *map, char *key);
 void freeHashMap(HashMap map);

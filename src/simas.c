@@ -49,7 +49,8 @@ int main(int argc, const char * argv[]) {
         if (strcmp(argv[argc - 1], "-d") == 0) { maxIterations = argc - 1; snadmwithc(); }
         else { maxIterations = argc; }
         for (i = 1; i < maxIterations; i++) {
-            new = openSimasFile(argv[i]);
+            new = openSimasFile((char *)argv[i]);
+            if (strcmp(argv[argc - 1], "-ne") == 0) break;
             executeFile(&new, 1);
         }
     } else { 

@@ -159,19 +159,22 @@ Note: All comparison operators will OVERWRITE the FIRST variable passed in. Plea
 #### - list
 * list operations. lists are a special data structure that allows you to have multiple values in a single container. 
 * Indexing, starting at 1, can be done both via constant numbers and variables. (CMAS only feature)
+* Appending may also be chained, where you may append multiple constants/variables at once. (CMAS only feature)
+* Accesses may be chained as well, starting at the first index and increasing with every access. (CMAS only feature)
 * OPERAND 1: the operation to run
 * OPERAND 2: the name of the list to perform the operation on
 * All of the list operations:
     * `list new`
         * creates a new list
+        * OPERAND 3+
     * `list appv`
         * append a variable to a list
-        * OPERAND 3: data type of the variable (this operand is ignored in CMAS, but must be there to retain structure & compatibility)
-        * OPERAND 4: name of the variable
+        * OPERAND 3: data type of the variable(s) (this operand is ignored in CMAS, but must be there to retain structure & compatibility)
+        * OPERAND 4+: name of the variable(s)
     * `list appc`
         * append a constant to a list
-        * OPERAND 3: data type of the constant
-        * OPERNAD 4: the constant
+        * OPERAND 3: data type of the constant(s)
+        * OPERNAD 4+: the constant(s)
     * `list upv`
         * update the list item at a specific index with a variable
         * OPERAND 3: the index, starting from 1
@@ -186,9 +189,9 @@ Note: All comparison operators will OVERWRITE the FIRST variable passed in. Plea
         * delete an item from the list
         * OPERAND 3: the index of the item, starting from 1
     * `list acc`
-        * access an item from a list and store it in a variable
+        * access one or more items from a list and store them in one or more variables
         * OPERAND 3: the index, starting from 1
-        * OPERAND 4: the name of the variable that you want to store the value in.
+        * OPERAND 4+: the name of the variable(s) that you want to store the value(s) in.
     * `list show`
         * print out the entire list to the standard output
     * `list dump`
@@ -295,7 +298,7 @@ However, you CAN create a POINTER to a POINTER, as well as an ALIAS to an ALIAS.
 * assign a value to a variable.
 * OPERAND 1: the type of value. If the operand here is "in", then the value of the user input will be stored at this variable, with `str` type
 * OPERAND 2: the name of the variable
-* OPERAND 3: the value you wish to assign, if not using "in" as OPERAND 1
+* OPERAND 3: the value you wish to assign, if not using "in" as OPERAND 1. If using "in' as OPERAND 1, this is instead optional, and is the number of characters accepted (255 if unspecified). 
 
 #### - type
 * get the type of a variable

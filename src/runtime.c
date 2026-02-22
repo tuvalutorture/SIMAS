@@ -9,10 +9,15 @@
 #include "helpers.h"
 
 InstructionSet ValidInstructions;
-HashMap ValidCommands;
+InstructionSet ValidCommands;
 
 int debugMode = 0;
 int commandPrompt = 0;
+/* nops for control */
+void nop_lab(openFile *file) { }
+void nop_end(openFile *file) { }
+void nop_ret(openFile *file) { }
+void nop_imp(openFile *file) { }
 
 void cry(char *msg) { puts(msg); exit(2847172); }
 
@@ -20,13 +25,8 @@ void freeInstructionSet(InstructionSet *isa) { freeHashMap(isa->operations); fre
 void freeInstruction(instruction *inst) {
     int i;
     if (inst == NULL) return;
-    DEBUG_PRINTF("freeing %s instruction\n", inst->operation);
-    free(inst->operation);
-    for (i = 0; i < inst->argumentCount; i++) {
-        DEBUG_PRINTF("freeing %s arg\n", inst->arguments[i]); free(inst->arguments[i]);
-    }
+    for (i = 0; i < inst->argumentCount; i++) { DEBUG_PRINTF("freeing %s arg\n", inst->arguments[i]); free(inst->arguments[i]); }
     free(inst->arguments);
-    if (inst->prefix != NULL) free(inst->prefix);
     free(inst);
 }
 
@@ -67,7 +67,7 @@ void preprocessImports(openFile *new) {
     addItemToMap(&imports, NULL, new->path, NULL); 
     for (i = 0; i < new->instructionCount; i++) {
         DEBUG_PRINTF("%d\n", i);
-        if (strcmp(new->instructions[i]->operation, "import") == 0) {
+        if (new->instructions[i]->op->functionPointer == (void(*)(void*))nop_imp) {
             openFile temp;
             memset(&temp, 0, sizeof(openFile));
             if (searchHashMap(&imports, new->instructions[i]->arguments[0]) != NULL) { new->programCounter = i; handleError("cannot import a file more than once", 438, 0, new); }
@@ -87,7 +87,7 @@ void preprocessLabels(openFile *new) {
     int i;
     new->labels = create_hashmap(new->labels.buckets); 
     for (i = 0; i < new->instructionCount; i++) {
-        if (strcmp(new->instructions[i]->operation, "label") == 0) { 
+        if (new->instructions[i]->op->functionPointer == (void(*)(void*))nop_lab) {
             int *location;
             if (searchHashMap(&new->labels, new->instructions[i]->arguments[0]) != NULL) { new->programCounter = i; handleError("redefinition of label", 85, 0, new); }
             location = (int *)malloc(sizeof(int)); *location = i - 1;
@@ -103,60 +103,47 @@ void snadmwithc(void) { /* sandwich hrhehehheheheheheheheheeeehheheherhehehehheh
     else { puts("debug mode disabled"); }
 }
 
-int findNumberArgs(instruction *inst, InstructionSet isa) { 
-    char *temp = buildStringFromInstruction(inst);
-    operation *search = ((operation *)searchHashMap(&isa.operations, temp));
-    free(temp); 
-    if (search != NULL) { return search->minArgs; } return -1; 
-}
-
-instruction *add_instruction(char *inst, char *arguments[], char *prefix, int args) {
-    int i; char *ins = stripSemicolon(inst);
+instruction *add_instruction(InstructionSet isa, char *inst, char **arguments, char *prefix, int args) {
+    int i, freeable = 0; char *op;
     instruction *instruct = (instruction *)malloc(sizeof(instruction));
     if (args >= 1) { instruct->arguments = (char **)malloc(sizeof(char*) * args); for (i = 0; i < args; i++) { instruct->arguments[i] = stripSemicolon(arguments[i]); }}
     else { instruct->arguments = NULL; }
-    instruct->operation = stroustrup(ins); instruct->argumentCount = args;
-    if (prefix != NULL) { instruct->prefix = stroustrup(prefix); }
-    else { instruct->prefix = NULL; }
-    DEBUG_PRINTF("added instruction %s of arg count %d\n", instruct->operation, instruct->argumentCount);
-    free(ins);
+    if (prefix != NULL) { op = (char *)calloc(strlen(inst) + strlen(prefix) + 2, sizeof(char)); strcpy(op, prefix); strcat(op, " "); strcat(op, inst); freeable = 1; }
+    else { op = inst; }
+    instruct->op = searchHashMap(&isa.operations, op); instruct->argumentCount = args;
+    DEBUG_PRINTF("added instruction %s of arg count %d\n", op, instruct->argumentCount);
+    if (freeable) free(op);
     return instruct;
 }
 
 instruction *parseInstructions(char *string, InstructionSet isa) {
-    int i, argc = 0, index = 0, arrCount; 
-    char *operation, *prefix = NULL, **tokenized = stringSlicer(string, &arrCount); 
-    instruction *new; 
-    lowerizeInPlace(tokenized[index]); 
+    int i, argc = 0, index = 0, arrCount;
+    char *operation, *prefix = NULL, **tokenized = stringSlicer(string, &arrCount);
+    instruction *new;
+    stripSemicolonInPlace(tokenized[arrCount - 1]);
+    lowerizeInPlace(tokenized[index]);
     while (strcmp(tokenized[index], "please") == 0) { index += 1; lowerizeInPlace(tokenized[index]);  }
-    if (searchHashMap(&isa.prefixes, tokenized[index]) != NULL) { prefix = tokenized[index]; index += 1; lowerizeInPlace(tokenized[index]); }
+    if (isa.prefixes.items != NULL && searchHashMap(&isa.prefixes, tokenized[index]) != NULL) { prefix = tokenized[index]; index += 1; lowerizeInPlace(tokenized[index]); }
     lowerizeInPlace(tokenized[index]); operation = tokenized[index]; index += 1;
-    argc = arrCount - index; 
-    new = add_instruction(operation, tokenized + index, prefix, argc);
+    argc = arrCount - index;
+    new = add_instruction(isa, operation, tokenized + index, prefix, argc);
     if (argc >= 1) { for (i = 0; i < argc; i++) { DEBUG_PRINTF("instruction %s has arg \"%s\"\n", operation, tokenized[index + i]); }}
-    for (i = 0; i < arrCount; i++) { free(tokenized[i]); } free(tokenized); 
+    free(tokenized);
     return new;
 }
 
-
-void addOperation(char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) { 
+void addOperation(InstructionSet *set, char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) {
     operation *op = (operation *)malloc(sizeof(operation)); char *joined;
-    op->functionPointer = functionPointer; 
+    op->functionPointer = functionPointer;
     op->minArgs = minimumArguments;
     if (prefix != NULL) { char **temp; temp = (char **)malloc(sizeof(char *) * 2); temp[0] = prefix; temp[1] = name; joined = joinStringsSentence(temp, 2, 0); free(temp); }
     else { joined = stroustrup(name); }
-    addItemToMap(&ValidInstructions.operations, op, joined, free);
+    addItemToMap(&set->operations, op, joined, free);
     free(joined);
 }
 
-void addCommand(char *name, char *(*commandPointer)(instruction*, openFile*)) { 
-    command *cmd = (command *)malloc(sizeof(command));
-    cmd->commandPointer = commandPointer;
-    addItemToMap(&ValidCommands, cmd, name, free);
-}
-
-openFile openSimasFile(const char path[]) {
-    int i;
+openFile openSimasFile(char *path) {
+    unsigned long i, fileIndex = 0, instructionCount = 0, fileSize; char *fileContents;
     FILE *file = fopen(path, "rb");
     openFile new;
     memset(&new, 0, sizeof(openFile));
@@ -165,94 +152,138 @@ openFile openSimasFile(const char path[]) {
 
     new.path = stroustrup(path);
 
-    while (!feof(file)) {
-        int size = readFileToAndIncludingChar(file, ';'); char *buffer;
-        DEBUG_PRINTF("\n%d\n", size);
-        DEBUG_PRINT("goin back for more\n"); 
-        if (feof(file)) break;
+    fileContents = readFile(path);
+    if (!fileContents) cry("shit died ig");
+    fileSize = strlen(fileContents);
 
-        fseek(file, size * -1, SEEK_CUR);
-        buffer = (char *)calloc(size + 1, sizeof(char)); 
-        fread(buffer, sizeof(char), size, file);
-        buffer[size] = '\0';
-
-        if (strchr(buffer, '@') == NULL) {
-            new.instructions = (instruction **)realloc(new.instructions, sizeof(instruction *) * (new.instructionCount + 1));
-            if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
-            new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
-            if (strcmp(new.instructions[new.instructionCount]->operation, "label") == 0 && new.instructions[new.instructionCount]->prefix == NULL) new.labels.buckets += 1;
-            new.instructionCount += 1;
-        }
-        
-        free(buffer);
-    }
-    if (debugMode) { for (i = 0; i < new.instructionCount; i++) { DEBUG_PRINTF("%d: %s\n", i, new.instructions[i]->operation); }}
     fclose(file);
+
+    for (i = 0; i < fileSize; i++) {
+        if (fileContents[i] == '@') instructionCount -= 1;
+        if (fileContents[i] == ';') instructionCount += 1;
+    }
+
+    new.instructions = (instruction **)malloc(sizeof(instruction *) * instructionCount);
+    if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
+
+    while (fileIndex < fileSize) {
+        int size = 0; char *buffer;
+        while (fileContents[fileIndex++] != ';' && fileContents[fileIndex - 1] != '\0') { size += 1; }
+        DEBUG_PRINTF("\n%d\n", size);
+        DEBUG_PRINT("goin back for more\n");
+        if (fileIndex > fileSize) { break; }
+
+        buffer = fileContents + fileIndex - size - 1;
+        buffer[size] = '\0';
+        if (strchr(buffer, '@')) continue;
+
+        new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
+        if (new.instructions[new.instructionCount]->op->functionPointer == (void(*)(void*))nop_lab) new.labels.buckets += 1;
+        new.instructionCount += 1;
+    }
+
+    free(fileContents);
     return new;
+}
+
+/* command functions for the CLI */
+void cmd_quit(command *cmd) { } /* this is what we call a pro gamer move */
+void cmd_clear(command *cmd) { freeFile(*cmd->file); memset(cmd->file, 0, sizeof(openFile)); }
+void cmd_debug(command *cmd) { snadmwithc(); }
+void cmd_load(command *cmd) { if (cmd->inst->argumentCount) { freeFile(*cmd->file); *cmd->file = openSimasFile(cmd->inst->arguments[0]); if (cmd->file->path) { puts("loaded successfully"); }}  else { puts("you need to specify a file"); }}
+void cmd_dump(command *cmd) { int i; for (i = 0; i < cmd->file->instructionCount; i++) { char *string = unParseInstructions(cmd->file->instructions[i]); printf("%d: %s\n", i + 1, string); free(string); }}
+void cmd_run(command *cmd) { if (cmd->file->instructionCount) { executeFile(cmd->file, 0); cleanFile(cmd->file); } else { puts("no instructions to execute"); }}
+void cmd_save(command *cmd) {
+    if (cmd->inst->argumentCount) {
+        FILE* dest = fopen(cmd->inst->arguments[0], "wb");
+        if (dest) {
+            int i;
+            for (i = 0; i < cmd->file->instructionCount; i++) {
+                char *string = unParseInstructions(cmd->file->instructions[i]);
+                fwrite(string, sizeof(char), strlen(string), dest);
+                free(string); fputc('\n', dest);
+            }
+            fclose(dest); puts("successfully saved!");
+        } else puts("unable to open file");
+    } else puts("you need to specify a file to save to");
+}
+void cmd_help(command *cmd) {
+    puts(
+        "CMAS Command List:\n"
+        "!quit: Quits the CMAS command line.\n"
+        "!clear: Resets the current program.\n"
+        "!edit <index>: Edit the instruction at an index, starting from 1.\n"
+        "!dump: Dumps the current program to terminal.\n"
+        "!load <filename>: Loads a SIMAS file.\n"
+        "!save <filename>: Saves the current SIMAS program to disk.\n"
+        "!run: Executes the current SIMAS program.\n"
+        "Please read the README.md for a list of all instructions and their operators."
+    );
 }
 
 void beginCommandLine(char *entryMsg, openFile *passed) {
     puts(entryMsg);
 
-    if (!ValidCommands.items) setUpCommands();
+    if (!ValidCommands.operations.items) setUpCommands();
 
     while (1) {
         char *value, *temp; instruction *inst;
         commandPrompt = 1; printf("$ ");
         value = grabUserInput(256);
         if (!value) { handleError("Unable to allocate memory\n", 10, 1, passed); }
-        temp = stripSemicolon(value); strip(temp, ' '); 
+        temp = stripSemicolon(value); strip(temp, ' ');
         if (strcmp(temp, "") == 0) {free(value); free(temp); continue;} /* blank check */
         free(temp);
-        inst = parseInstructions(value, ValidInstructions);
-        if (inst->operation[0] == '!') {
-            command *cmd = ((command *)searchHashMap(&ValidCommands, inst->operation));
-            if (cmd != NULL) {
-                char *ret = cmd->commandPointer(inst, passed);
-                if (ret == NULL) { free(value); break; }
-                printf("%s", ret);
-            } else { 
-                printf("invalid command\n"); 
-            }
-        } else if (findNumberArgs(inst, ValidInstructions) == -1 && strchr(inst->operation, '@') == NULL) {
-            printf("invalid instruction\n");
+
+        if (value[0] == '!') {
+            command cmd;
+            inst = parseInstructions(value, ValidCommands);
+            if (inst->op == NULL) printf("invalid command\n");
+            cmd.file = passed; cmd.inst = inst;
+            inst->op->functionPointer(&cmd);
+            if (inst->op->functionPointer == (void(*)(void*))cmd_quit) { free(value); freeInstruction(inst); break;}
         } else {
-            if (strchr(value, ';') != NULL && inst->argumentCount >= findNumberArgs(inst, ValidInstructions)) {
-                passed->instructions = (instruction **)realloc(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
-                if (passed->instructions == NULL) { free(value); handleError("Reallocation of memory failed\n", 11, 1, passed); break; }
-                passed->instructions[passed->instructionCount] = add_instruction(inst->operation, inst->arguments, inst->prefix, inst->argumentCount);
-                passed->instructionCount += 1;
-                if (strcmp(inst->operation, "label") == 0 && inst->prefix == NULL) passed->labels.buckets += 1;
-                printf("ok\n");
-            } else if (inst->argumentCount < findNumberArgs(inst, ValidInstructions)) {
-                printf("too little arguments for instruction\n");
+            inst = parseInstructions(value, ValidInstructions);
+            if (!inst->op && strchr(value, '@') == NULL) {
+                printf("invalid instruction\n");
             } else {
-                printf("code must end with a semicolon\n");
+                if (strchr(value, ';') != NULL && inst->argumentCount >= inst->op->minArgs) {
+                    int i; instruction *newInstruction = malloc(sizeof(instruction));
+                    if (newInstruction == NULL) cry("waaaah");
+                    newInstruction->op = inst->op; newInstruction->argumentCount = inst->argumentCount;
+                    newInstruction->arguments = (char **)malloc(sizeof(char *) * newInstruction->argumentCount);
+                    for (i = 0; i < newInstruction->argumentCount; i++) { newInstruction->arguments[i] = stroustrup(inst->arguments[i]); }
+                    passed->instructions = (instruction **)realloc(passed->instructions, sizeof(instruction *) * (passed->instructionCount + 1));
+                    if (passed->instructions == NULL) { free(value); handleError("Reallocation of memory failed\n", 11, 1, passed); break; }
+                    passed->instructions[passed->instructionCount] = inst;
+                    passed->instructionCount += 1;
+                    if (inst->op->functionPointer == (void(*)(void*))nop_lab) passed->labels.buckets += 1;
+                    printf("ok\n");
+                } else if (inst->argumentCount < inst->op->minArgs) {
+                    printf("too little arguments for instruction\n");
+                } else {
+                    printf("code must end with a semicolon\n");
+                }
             }
         }
-
         freeInstruction(inst); free(value);
     }
-    
-    freeHashMap(ValidCommands);
+
     freeFile(*passed);
+    freeInstructionSet(&ValidCommands);
     freeInstructionSet(&ValidInstructions);
 
     exit(0);
 }
 
 void executeInstruction(openFile *cur) { /* all of these are defined up here so this function can operate independently of any files */
-    operation *found; char *string;
-    if (strlen(cur->instructions[cur->programCounter]->operation) == 0) return;
-    string = buildStringFromInstruction(cur->instructions[cur->programCounter]);
-    DEBUG_PRINTF("\nExecuting instruction %s on line %d.\n", string, cur->programCounter);
-    found = searchHashMap(&ValidInstructions.operations, string); free(string);
-    if (found != NULL && found->functionPointer != NULL) { (found->functionPointer)(cur); }
+    if (cur->instructions[cur->programCounter]->op == NULL) return;
+    cur->instructions[cur->programCounter]->op->functionPointer(cur);
 }
 
 void executeFile(openFile *current, int doFree) {
-    preprocessImports(current); 
-    if (current->labels.buckets > 0) preprocessLabels(current); 
+    preprocessImports(current);
+    if (current->labels.buckets > 0) preprocessLabels(current);
     current->lists = create_hashmap(10); current->variables = create_hashmap(10); current->functions = create_hashmap(10); /* 10 to provide breathing room before rehashing */
     for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); if (commandPrompt == 2) { break; }}
     if (doFree) freeFile(*current);
@@ -293,7 +324,7 @@ void mat_div(openFile *file) { standardMath(file, file->instructions[file->progr
 void var_set(openFile *file) { variableSet(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 void var_type(openFile *file) { grabTypeFromVar(*(variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]), createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1])); }
 void var_conv(openFile *file) { convert(searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]), grabType(file->instructions[file->programCounter]->arguments[1])); }
-void var_copy(openFile *file) { if (file->instructions[file->programCounter]->arguments[1][0] == '$') { handleError("name is reserved", 99, 0, file); } varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0])); } 
+void var_copy(openFile *file) { if (file->instructions[file->programCounter]->arguments[1][0] == '$') { handleError("name is reserved", 99, 0, file); } varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0])); }
 void var_ptr(openFile *file) { if (file->instructions[file->programCounter]->arguments[0][0] == '$') { handleError("cannot create pointer to reserved variable", 94, 0, file); } setPointer(file, (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments[1]); }
 /* comparison       */
 void cmp_gt(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter]->arguments, '>'); }
@@ -319,7 +350,7 @@ void lis_acc(openFile *file) { varcpy(createVarIfNotFound(&file->variables, file
 void lis_load(openFile *file) { loadList(&file->lists, file->instructions[file->programCounter]->arguments[0], file->instructions[file->programCounter]->arguments[1]); }
 void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter]->arguments[1]), NUM, NULL, *((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))->elements, 0); }
 void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter]->arguments[1], formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]))); }
-void lis_upc(openFile *file) { listUpdateConstant(file, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0])), file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); } 
+void lis_upc(openFile *file) { listUpdateConstant(file, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0])), file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 void lis_copy(openFile *file) { list *li = searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[1]); if (!li) { li = (list *)calloc(1, sizeof(list)); li->elements = (int *)calloc(1, sizeof(int)); addItemToMap(&file->lists, li, file->instructions[file->programCounter]->arguments[1], (void (*)(void *))freeList); } listcpy(li, searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0])); }
 void lis_alias(openFile *file) { if (file->instructions[file->programCounter]->arguments[0][0] == '$') { handleError("cannot create alias to reserved list", 95, 0, file); } setAlias(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter]->arguments[0]), file->instructions[file->programCounter]->arguments[1]); }
@@ -327,136 +358,73 @@ void lis_alias(openFile *file) { if (file->instructions[file->programCounter]->a
 void fun_fun(openFile *file) { registerFunction(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 void fun_call(openFile *file) { executeFunction(file, file->instructions[file->programCounter]->arguments, file->instructions[file->programCounter]->argumentCount); }
 
-/* command functions for the CLI */
-char *cmd_quit(instruction *inst, openFile *file) { freeInstruction(inst); return NULL; } /* this is what we call a pro gamer move */
-char *cmd_clear(instruction *inst, openFile *file) { freeFile(*file); memset(file, 0, sizeof(openFile)); return ""; }
-char *cmd_debug(instruction *inst, openFile *file) { snadmwithc(); return ""; }
-char *cmd_load(instruction *inst, openFile *file) { if (inst->argumentCount) { freeFile(*file); *file = openSimasFile(inst->arguments[0]); if (file->path) { return "loaded successfully\n"; }}  else return "you need to specify a file\n"; return ""; }
-char *cmd_dump(instruction *inst, openFile *file) { int i; for (i = 0; i < file->instructionCount; i++) { char *string = unParseInstructions(file->instructions[i]); printf("%d: %s\n", i + 1, string); free(string); } return ""; /* dummy ret */ }
-char *cmd_run(instruction *inst, openFile *file) { if (file->instructionCount) { executeFile(file, 0); cleanFile(file); return ""; } else { return "no instructions to execute\n"; }}
-char *cmd_save(instruction *inst, openFile *file) {
-    if (inst->argumentCount) {
-        FILE* dest = fopen(inst->arguments[0], "wb");
-        if (dest) {
-            int i;
-            for (i = 0; i < file->instructionCount; i++) {
-                char *string = unParseInstructions(file->instructions[i]);
-                fwrite(string, sizeof(char), strlen(string), dest);
-                free(string); fputc('\n', dest);
-            }
-            fclose(dest); return "successfully saved!\n";
-        } else return "unable to open file\n";
-    } else return "you need to specify a file to save to \n";
-}
-char *cmd_edit(instruction *inst, openFile *file) {
-    if (inst->argumentCount) {
-        if (atoi(inst->arguments[0]) <= file->instructionCount && file->instructionCount && (atoi(inst->arguments[0]) - 1) >= 0) {
-            char *out, *temporary, *old = unParseInstructions(file->instructions[atoi(inst->arguments[0]) - 1]);
-            instruction *instruct;
-            printf("Old instruction: %s\n", old); free(old);
-            printf("Enter new instruction: ");
-            out = grabUserInput(256); temporary = stripSemicolon(out); strip(temporary, ' ');
-            instruct = parseInstructions(out, ValidInstructions);
-            if (strcmp(temporary, "") != 0 && strchr(out, ';') && instruct->argumentCount >= findNumberArgs(instruct, ValidInstructions)) { 
-                freeInstruction(file->instructions[atoi(inst->arguments[0]) - 1]);
-                file->instructions[atoi(inst->arguments[0]) - 1] = add_instruction(instruct->operation, instruct->arguments, instruct->prefix, instruct->argumentCount);
-            } else if (strchr(out, ';') == NULL) {
-                printf("code must end with a semicolon\n");
-            } else if (instruct->argumentCount < findNumberArgs(instruct, ValidInstructions)) {
-                printf("too little arguments for instruction\n");
-            }
-            freeInstruction(instruct); free(temporary); free(out);
-            return "";
-        }
-
-        else if (!file->instructionCount) return "no instructions\n";
-        else if (atoi(inst->arguments[0]) >= file->instructionCount) return "invalid index\n";
-    }
-    else return "you need to specify an index\n";
-    return "";
-}
-char *cmd_help(instruction *inst, openFile *file) {
-    return(
-        "CMAS Command List:\n"
-        "!quit: Quits the CMAS command line.\n"
-        "!clear: Resets the current program.\n"
-        "!edit <index>: Edit the instruction at an index, starting from 1.\n"
-        "!dump: Dumps the current program to terminal.\n"
-        "!load <filename>: Loads a SIMAS file.\n"
-        "!save <filename>: Saves the current SIMAS program to disk.\n"
-        "!run: Executes the current SIMAS program.\n"
-        "Please read the README.md for a list of all instructions and their operators.\n"
-    );
-}
-
 void setUpStdlib(void) {
     ValidInstructions.operations = create_hashmap(54); ValidInstructions.prefixes = create_hashmap(1);
     addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
-    addOperation("label", NULL, NULL, 1); /* no-op */
-    addOperation("end", NULL, NULL, 1); /* no-op */
-    addOperation("ret", NULL, NULL, 0); /* no-op */
-    addOperation("import", NULL, NULL, 1); /* no-op */
-    addOperation("print", NULL, (void(*)(void*))con_printv, 1); 
-    addOperation("println", NULL, (void(*)(void*))con_println, 0);
-    addOperation("prints", NULL, (void(*)(void*))con_prints, 0); 
-    addOperation("printc", NULL, (void(*)(void*))con_printc, 1); 
-    addOperation("read", NULL, (void(*)(void*))fio_read, 2); 
-    addOperation("write", NULL, (void(*)(void*))fio_write, 2);
-    addOperation("writev", NULL, (void(*)(void*))fio_writev, 2); 
-    addOperation("not", NULL, (void(*)(void*))etc_not, 1);
-    addOperation("quit", NULL, (void(*)(void*))etc_quit, 0);
-    addOperation("add", NULL, (void(*)(void*))mat_add, 3);
-    addOperation("sub", NULL, (void(*)(void*))mat_sub, 3);
-    addOperation("mul", NULL, (void(*)(void*))mat_mul, 3);
-    addOperation("div", NULL, (void(*)(void*))mat_div, 3);
-    addOperation("set", NULL, (void(*)(void*))var_set, 2);
-    addOperation("type", NULL, (void(*)(void*))var_type, 2);
-    addOperation("conv", NULL, (void(*)(void*))var_conv, 2);
-    addOperation("copy", NULL, (void(*)(void*))var_copy, 2);
-    addOperation("ptr", NULL, (void(*)(void*))var_ptr, 2);
-    addOperation("gt", NULL, (void(*)(void*))cmp_gt, 3); 
-    addOperation("gte", NULL, (void(*)(void*))cmp_gte, 3); 
-    addOperation("st", NULL, (void(*)(void*))cmp_st, 3); 
-    addOperation("ste", NULL, (void(*)(void*))cmp_ste, 3); 
-    addOperation("eqv", NULL, (void(*)(void*))cmp_eqv, 3); 
-    addOperation("neqv", NULL, (void(*)(void*))cmp_neqv, 3);
-    addOperation("eqc", NULL, (void(*)(void*))cmp_eqc, 3); 
-    addOperation("neqc", NULL, (void(*)(void*))cmp_neqc, 3);
-    addOperation("and", NULL, (void(*)(void*))cmp_and, 3); 
-    addOperation("nand", NULL, (void(*)(void*))cmp_nand, 3);
-    addOperation("or", NULL, (void(*)(void*))cmp_or, 3); 
-    addOperation("nor", NULL, (void(*)(void*))cmp_nor, 3);
-    addOperation("xor", NULL, (void(*)(void*))cmp_xor, 3);
-    addOperation("jump", NULL, (void(*)(void*))jmp_jump, 1);
-    addOperation("jumpv", NULL, (void(*)(void*))jmp_jumpv, 2); 
-    addOperation("jumpnv", NULL, (void(*)(void*))jmp_jumpnv, 2);
-    addOperation("del", "list", (void(*)(void*))lis_del, 2); 
-    addOperation("appv", "list", (void(*)(void*))lis_appv, 3); 
-    addOperation("show", "list", (void(*)(void*))lis_show, 1); 
-    addOperation("new", "list", (void(*)(void*))lis_new, 1); 
-    addOperation("upv", "list", (void(*)(void*))lis_upv, 4); 
-    addOperation("acc", "list", (void(*)(void*))lis_acc, 3); 
-    addOperation("load", "list", (void(*)(void*))lis_load, 2); 
-    addOperation("len", "list", (void(*)(void*))lis_len, 2); 
-    addOperation("dump", "list", (void(*)(void*))lis_dump, 2); 
-    addOperation("upc", "list", (void(*)(void*))lis_upc, 4); 
-    addOperation("appc", "list", (void(*)(void*))lis_appc, 3); 
-    addOperation("copy", "list", (void(*)(void*))lis_copy, 2); 
-    addOperation("alias", "list", (void(*)(void*))lis_alias, 2);
-    addOperation("copyl", NULL, (void(*)(void*))lis_copy, 2); 
-    addOperation("fun", NULL, (void(*)(void *))fun_fun, 2);
-    addOperation("call", NULL, (void(*)(void *))fun_call, 2);
+    addOperation(&ValidInstructions, "label", NULL, (void(*)(void*))nop_lab, 1); /* no-op */
+    addOperation(&ValidInstructions, "end", NULL, (void(*)(void*))nop_end, 1); /* no-op */
+    addOperation(&ValidInstructions, "ret", NULL, (void(*)(void*))nop_ret, 0); /* no-op */
+    addOperation(&ValidInstructions, "import", NULL, (void(*)(void*))nop_imp, 1); /* no-op */
+    addOperation(&ValidInstructions, "print", NULL, (void(*)(void*))con_printv, 1);
+    addOperation(&ValidInstructions, "println", NULL, (void(*)(void*))con_println, 0);
+    addOperation(&ValidInstructions, "prints", NULL, (void(*)(void*))con_prints, 0);
+    addOperation(&ValidInstructions, "printc", NULL, (void(*)(void*))con_printc, 1);
+    addOperation(&ValidInstructions, "read", NULL, (void(*)(void*))fio_read, 2);
+    addOperation(&ValidInstructions, "write", NULL, (void(*)(void*))fio_write, 2);
+    addOperation(&ValidInstructions, "writev", NULL, (void(*)(void*))fio_writev, 2);
+    addOperation(&ValidInstructions, "not", NULL, (void(*)(void*))etc_not, 1);
+    addOperation(&ValidInstructions, "quit", NULL, (void(*)(void*))etc_quit, 0);
+    addOperation(&ValidInstructions, "add", NULL, (void(*)(void*))mat_add, 3);
+    addOperation(&ValidInstructions, "sub", NULL, (void(*)(void*))mat_sub, 3);
+    addOperation(&ValidInstructions, "mul", NULL, (void(*)(void*))mat_mul, 3);
+    addOperation(&ValidInstructions, "div", NULL, (void(*)(void*))mat_div, 3);
+    addOperation(&ValidInstructions, "set", NULL, (void(*)(void*))var_set, 2);
+    addOperation(&ValidInstructions, "type", NULL, (void(*)(void*))var_type, 2);
+    addOperation(&ValidInstructions, "conv", NULL, (void(*)(void*))var_conv, 2);
+    addOperation(&ValidInstructions, "copy", NULL, (void(*)(void*))var_copy, 2);
+    addOperation(&ValidInstructions, "ptr", NULL, (void(*)(void*))var_ptr, 2);
+    addOperation(&ValidInstructions, "gt", NULL, (void(*)(void*))cmp_gt, 3);
+    addOperation(&ValidInstructions, "gte", NULL, (void(*)(void*))cmp_gte, 3);
+    addOperation(&ValidInstructions, "st", NULL, (void(*)(void*))cmp_st, 3);
+    addOperation(&ValidInstructions, "ste", NULL, (void(*)(void*))cmp_ste, 3);
+    addOperation(&ValidInstructions, "eqv", NULL, (void(*)(void*))cmp_eqv, 3);
+    addOperation(&ValidInstructions, "neqv", NULL, (void(*)(void*))cmp_neqv, 3);
+    addOperation(&ValidInstructions, "eqc", NULL, (void(*)(void*))cmp_eqc, 3);
+    addOperation(&ValidInstructions, "neqc", NULL, (void(*)(void*))cmp_neqc, 3);
+    addOperation(&ValidInstructions, "and", NULL, (void(*)(void*))cmp_and, 3);
+    addOperation(&ValidInstructions, "nand", NULL, (void(*)(void*))cmp_nand, 3);
+    addOperation(&ValidInstructions, "or", NULL, (void(*)(void*))cmp_or, 3);
+    addOperation(&ValidInstructions, "nor", NULL, (void(*)(void*))cmp_nor, 3);
+    addOperation(&ValidInstructions, "xor", NULL, (void(*)(void*))cmp_xor, 3);
+    addOperation(&ValidInstructions, "jump", NULL, (void(*)(void*))jmp_jump, 1);
+    addOperation(&ValidInstructions, "jumpv", NULL, (void(*)(void*))jmp_jumpv, 2);
+    addOperation(&ValidInstructions, "jumpnv", NULL, (void(*)(void*))jmp_jumpnv, 2);
+    addOperation(&ValidInstructions, "del", "list", (void(*)(void*))lis_del, 2);
+    addOperation(&ValidInstructions, "appv", "list", (void(*)(void*))lis_appv, 3);
+    addOperation(&ValidInstructions, "show", "list", (void(*)(void*))lis_show, 1);
+    addOperation(&ValidInstructions, "new", "list", (void(*)(void*))lis_new, 1);
+    addOperation(&ValidInstructions, "upv", "list", (void(*)(void*))lis_upv, 4);
+    addOperation(&ValidInstructions, "acc", "list", (void(*)(void*))lis_acc, 3);
+    addOperation(&ValidInstructions, "load", "list", (void(*)(void*))lis_load, 2);
+    addOperation(&ValidInstructions, "len", "list", (void(*)(void*))lis_len, 2);
+    addOperation(&ValidInstructions, "dump", "list", (void(*)(void*))lis_dump, 2);
+    addOperation(&ValidInstructions, "upc", "list", (void(*)(void*))lis_upc, 4);
+    addOperation(&ValidInstructions, "appc", "list", (void(*)(void*))lis_appc, 3);
+    addOperation(&ValidInstructions, "copy", "list", (void(*)(void*))lis_copy, 2);
+    addOperation(&ValidInstructions, "alias", "list", (void(*)(void*))lis_alias, 2);
+    addOperation(&ValidInstructions, "copyl", NULL, (void(*)(void*))lis_copy, 2);
+    addOperation(&ValidInstructions, "fun", NULL, (void(*)(void *))fun_fun, 2);
+    addOperation(&ValidInstructions, "call", NULL, (void(*)(void *))fun_call, 2);
 }
 
 void setUpCommands() {
-    ValidCommands = create_hashmap(9); 
-    addCommand("!quit", cmd_quit);
-    addCommand("!run", cmd_run);
-    addCommand("!load", cmd_load);
-    addCommand("!save", cmd_save);
-    addCommand("!dump", cmd_dump);
-    addCommand("!clear", cmd_clear);
-    addCommand("!edit", cmd_edit);
-    addCommand("!help", cmd_help);
-    addCommand("!debug", cmd_debug);
+    ValidCommands.operations = create_hashmap(8);
+    addOperation(&ValidCommands, "!quit", NULL, (void(*)(void *))cmd_quit, 0);
+    addOperation(&ValidCommands, "!run", NULL, (void(*)(void *))cmd_run, 0);
+    addOperation(&ValidCommands, "!load", NULL, (void(*)(void *))cmd_load, 1);
+    addOperation(&ValidCommands, "!save", NULL, (void(*)(void *))cmd_save, 1);
+    addOperation(&ValidCommands, "!dump", NULL, (void(*)(void *))cmd_dump, 0);
+    addOperation(&ValidCommands, "!clear", NULL, (void(*)(void *))cmd_clear, 0);
+    addOperation(&ValidCommands, "!help", NULL, (void(*)(void *))cmd_help, 0);
+    addOperation(&ValidCommands, "!debug", NULL, (void(*)(void *))cmd_debug, 0);
 }

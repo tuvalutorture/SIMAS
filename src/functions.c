@@ -7,6 +7,10 @@
 #include "functions.h"
 #include "variables.h"
 
+extern void fun_fun(openFile *file);
+extern void nop_end(openFile *file);
+extern void nop_ret(openFile *file);
+
 void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     int i; function *new; 
     if (arguments[0][0] == '$') handleError("name is reserved", 99, 0, caller);
@@ -16,10 +20,10 @@ void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     new->parameterCount = atoi(arguments[1]);
     new->start = caller->programCounter; 
     for (i = caller->programCounter + 1; i < caller->instructionCount; i++) { 
-        if (strcmp(caller->instructions[i]->operation, "fun") == 0) { free(new); handleError("cannot define function within function", 84, 0, caller); }
-        if (strcmp(caller->instructions[i]->operation, "end") == 0) { new->end = i; break; }
+        if (caller->instructions[i]->op->functionPointer == (void(*)(void*))fun_fun) { free(new); handleError("cannot define function within function", 84, 0, caller); return; }
+        if (caller->instructions[i]->op->functionPointer == (void(*)(void*))nop_end) { new->end = i; break; }
     }
-    if (i == caller->instructionCount) { free(new); handleError("no end to function", 84, 0, caller); }
+    if (i == caller->instructionCount) { free(new); handleError("no end to function", 84, 0, caller); return; }
     addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
 }
 
@@ -81,7 +85,7 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
         free(tempNames); free(types);
     }
     caller->programCounter = func->start + 1;
-    while (strcmp(caller->instructions[caller->programCounter]->operation, "ret")) {
+    while (caller->instructions[caller->programCounter]->op->functionPointer != (void(*)(void*))nop_ret) {
         for (i = 0; i < varCount; i++) { if (searchHashMap(&caller->variables, varNames[i]) == NULL) { addItemToMap(&caller->variables, varPtrs[i], varNames[i], NULL); }} /* re-adds any missing variables, should another function have prematurely deleted/overwritten it */
         for (i = 0; i < listCount; i++) { if (searchHashMap(&caller->lists, listNames[i]) == NULL) { addItemToMap(&caller->lists, listPtrs[i], listNames[i], NULL); }}
         executeInstruction(caller); caller->programCounter += 1;
@@ -89,7 +93,7 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
     }
     arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount; /* grab the current arguments */
     if (argumentCount >= 2) {
-        char *retName = (char *)calloc(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]); 
+        char *retName = (char *)calloc(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]);
         retName[0] = '$'; strcat(retName, funcName);
         if (returnType != 'l') {
             variable *returnedVar = create_variable(), *old;

@@ -65,21 +65,11 @@ char *joinStringsSentence(char **strings, int stringCount, int offset) {
     return finalString;
 }
 
-char *buildStringFromInstruction(instruction *inst) {
-    char *joined;
-    if (inst->prefix != NULL) { char **temp; temp = (char **)malloc(sizeof(char *) * 2); temp[0] = inst->prefix; temp[1] = inst->operation; joined = joinStringsSentence(temp, 2, 0); free(temp); }
-    else { joined = stroustrup(inst->operation); }
-    return joined;
-}
-
-char *unParseInstructions(instruction *inst) {
-    int i; size_t size = strlen(inst->operation) + 1; char *final;
+char *unParseInstructions(instruction *inst, InstructionSet *isa) {
+    int i; char *final, *foundKey = searchForKey(&isa->operations, inst->op); size_t size = strlen(foundKey) + 2;
     for (i = 0; i < inst->argumentCount; i++) { size += strlen(inst->arguments[i]) + 1; }
-    if (inst->prefix != NULL) { size += strlen(inst->prefix) + 1; }
-    size += 2; /* nullterm and semicolon ofc */
     final = (char *)calloc(size, sizeof(char)); if (!final) return NULL;
-    if (inst->prefix != NULL) { strcat(final, inst->prefix); strcat(final, " "); } 
-    strcat(final, inst->operation); 
+    strcat(final, foundKey);
     for (i = 0; i < inst->argumentCount; i++) {
         strcat(final, " "); /* space between items ofc */
         strcat(final, inst->arguments[i]);
@@ -127,8 +117,7 @@ char **stringSlicer(char *string, int *elementCount) { /* strtok? what the fuck 
         for (i = offset; i < len; i++) { if (isWhitespace(string[i])) { offset += 1; } else {break;}}
         for (i = offset; i < len; i++) { if (!isWhitespace(string[i])) { tokenLen += 1; } else {break;}}
         DEBUG_PRINTF("allocating for token %d\n", currentToken);
-        arr[currentToken] = (char *)malloc(tokenLen + 1);
-        memcpy(arr[currentToken], string + offset, tokenLen);
+        arr[currentToken] = string + offset;
         arr[currentToken][tokenLen] = '\0';
         offset += tokenLen + 1;
         DEBUG_PRINT(arr[currentToken]);
@@ -138,12 +127,28 @@ char **stringSlicer(char *string, int *elementCount) { /* strtok? what the fuck 
     return arr;
 }
 
-int readFileToAndIncludingChar(FILE* file, char character) { /* verbose, much? */
-    char currentChar = 0; int count = 0;
-    while (currentChar != character) { 
-        currentChar = (char)fgetc(file); 
-        if (!feof(file)) { count += 1; } else {break;} 
-        if (currentChar == '\n' || currentChar == '\r') { DEBUG_PRINT("\\n"); } 
-        else { DEBUG_PRINTF("%c", currentChar); }} /* push the pointer forwards */
-    return count;
+char **stringTokeniser(char *string, int *elementCount) { /* same as stringSlicer but it strdups each token to avoid mutating */
+    int len = strlen(string), offset = 0, i, tokens = 0, currentToken = 0; char **arr = NULL;
+    while (isWhitespace(string[offset])) { if (string[offset] == '\0') { return NULL; } offset += 1; } /* skip all beginning whitespace, and bail if it's a blank line */
+    for (i = offset; i <= len; i++) {
+        if (isWhitespace(string[i])) tokens += 1; /* if there's whitespace, it must be the end of a token */
+        if (string[i] != '\0') { int prev = i; while (isWhitespace(string[i]) && i <= len) { i++; } if (prev != i) { i--; }} /* keep goin till we hit another real token, then rewind one back since i will increase agains */
+    }
+    if (!tokens) { DEBUG_PRINTF("\"%s\"\n", string); return NULL; }
+    arr = (char **)calloc(tokens, sizeof(char *));
+    DEBUG_PRINTF("token count: %d\n", tokens);
+    while (offset != len && currentToken < tokens) {
+        int tokenLen = 0;
+        for (i = offset; i < len; i++) { if (isWhitespace(string[i])) { offset += 1; } else {break;}}
+        for (i = offset; i < len; i++) { if (!isWhitespace(string[i])) { tokenLen += 1; } else {break;}}
+        DEBUG_PRINTF("allocating for token %d\n", currentToken);
+        arr[currentToken] = (char *)malloc(tokenLen + 1);
+        memcpy(arr[currentToken], string + offset, tokenLen);
+        arr[currentToken][tokenLen] = '\0';
+        offset += tokenLen + 1;
+        DEBUG_PRINT(arr[currentToken]);
+        currentToken += 1;
+    }
+    *elementCount = tokens;
+    return arr;
 }

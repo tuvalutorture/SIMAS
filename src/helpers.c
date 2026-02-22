@@ -75,15 +75,15 @@ void convert(variable *var, int type) {
     else { cry("invalid variable type.\n"); }
 }
 
-void setVar(variable *var, int type, char* value, double num, int boolean) {
-    char *val = NULL;
+void setVar(variable *var, int type, char* value, double num, int boolean, int maxChars) {
+    char *val = NULL; int freeable = 0;
     if (type == IN) { /* let the user type whatever bullshit is on their minds */
-        type = STR; val = grabUserInput(100);
+        type = STR; val = grabUserInput(maxChars); freeable = 1;
     } else if (type == STR) { 
-        val = stroustrup(value); 
+        val = value;
     }
     set_variable_value(var, type, val, num, boolean);
-    if (val) free(val);
+    if (freeable) free(val);
 }
 
 void standardMath(openFile *current, char **arguments, char operation) {
@@ -108,17 +108,18 @@ void standardMath(openFile *current, char **arguments, char operation) {
 }
 
 void variableSet(openFile *current, char **arguments, int argumentCount) {
-    int type = grabType(arguments[0]); char *concatenated = NULL;
+    int type = grabType(arguments[0]), charCount = 256; char *concatenated = NULL;
     if (arguments[1][0] == '$') handleError("name is reserved", 99, 0, current);
     if (type == STR) concatenated = joinStringsSentence(arguments, argumentCount, 2);
+    if (type == IN && argumentCount > 3) charCount = atoi(arguments[3]);
     switch (type) {
-        case IN: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0, 0); break;
-        case STR: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, concatenated, 0.0, 0); break;
-        case NUM: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, atof(arguments[2]), 0); break; 
-        case BOOL: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2])); break;
+        case IN: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0, 0, charCount); break;
+        case STR: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, concatenated, 0.0, 0, charCount); break;
+        case NUM: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, atof(arguments[2]), 0, charCount); break;
+        case BOOL: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2]), charCount); break;
         default: handleError("invalid type specification", 30, 0, current);
     }
-    free(concatenated);
+     if (concatenated != NULL) free(concatenated);
 }
 
 void grabTypeFromVar(variable check, variable *var) {
@@ -292,7 +293,7 @@ void setAlias(openFile *current, list *src, char *name) {
 }
 
 /* file i/o */
-char *readFile(char path[]) {
+char *readFile(char *path) {
     FILE *file = fopen(path, "r"); char *contents = NULL; long length;
     if (file == NULL) cry("cannot open le file!");
     fseek(file, 0, SEEK_END);
