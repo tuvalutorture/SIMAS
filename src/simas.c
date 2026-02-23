@@ -30,7 +30,7 @@
 /*                           Heaven send                            */
 /*                            Hell away                             */
 /*                   No one sings like you anymore                  */
-/*    can the sun just fucking collapse into a black hole already   */ 
+/*    can the sun just fucking collapse into a black hole already   */
 
 #include <stdio.h>
 #include <string.h>
@@ -53,6 +53,7 @@ int main(int argc, const char * argv[]) {
             if (strcmp(argv[argc - 1], "-ne") == 0) break;
             executeFile(&new, 1);
         }
+        if (strcmp(argv[argc - 1], "-ne") == 0) freeFile(new);
     } else { 
         beginCommandLine("CMAS (C Simple Assembly) Interpreter.\nWritten by tuvalutorture, Licensed under GNU GPLv3.\nUsing The SIMAS Programming Language, created by Turrnut.\nGitHub repo: https://github.com/tuvalutorture/simas \nType !help for a list of commands.\n", &new); 
     }

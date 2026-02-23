@@ -7,7 +7,6 @@
 #define BOOL 3
 #define IN 4
 
-#include "runtime.h"
 #include "hashmap.h"
 
 typedef struct variable variable;
@@ -18,15 +17,14 @@ union variableData { /* UNIONISE, MY CHILDREN! RISE AGAINST THE EMPLOYERS WHO TR
     double num;
     char *str;
     int boolean;
-    void *etc;
-}; 
+};
 
 struct variable {
     int *type, isPtr;
     variableData *data;
 };
 
-struct list { /* keeps them lookup times objectively speedy as fawk */
+struct list {
     int *elements, isAlias;
     variable **variables;
 }; 

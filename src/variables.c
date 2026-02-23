@@ -7,8 +7,8 @@
 
 void freeVariable(variable *var) { 
     if (var->isPtr == 0) { 
-        if (*var->type == STR && var->data->str != NULL) { free(var->data->str); } 
-        free(var->data); free(var->type); 
+        if (*var->type == STR && var->data->str != NULL) { free(var->data->str); }
+        free(var->data); free(var->type);
     } 
     free(var); 
 }
@@ -43,15 +43,17 @@ variable *create_variable(void) { /* dumb allocation wrapper */
 }
 
 int trueOrFalse(char *string) {
-    char *check = lowerize(string); int value = 0;
+    char check[6]; int value = 0;
+    if (!string || strlen(string) > 5) return 0;
+    strcpy(check, string);
+    lowerizeInPlace(check);
     if (strcmp(check, "true") == 0) { value = 1; }
     else if (strcmp(check, "false") == 0) { value = 0; }
-    free(check);
     return value;
 }
 
 void set_variable_value(variable *var, int type, char *value, double num, int bool) { /* too fucking lazy to pass in one at a time or wutever, so just pass in all of them manually, even if some are blank :3 */
-    if (*var->type == STR && var->data->str) free(var->data->str); 
+    if (*var->type == STR && var->data->str) free(var->data->str);
     var->data->str = NULL;
     if (type == NUM) { var->data->num = num; }
     else if (type == BOOL) { var->data->boolean = bool; }
@@ -65,30 +67,33 @@ void set_variable_value(variable *var, int type, char *value, double num, int bo
 
 /* ze horsemen of type feckery */
 double coerceStringToNum(char *string) {
-    char *converted = lowerize(string); double val = 0.0f;
-    if (!converted) return 0.0f;
+    char converted[255];
+    if (strlen(string) >= 255) return 0;
+    strcpy(converted, string);
+    if (!strlen(converted)) return 0.0f;
     /* coerce from booleans */
-    if (strcmp(converted, "true") == 0) { val = 1.0f; } 
-    else if (strcmp(converted, "false") == 0) { val = 0.0f; }
+    if (strcmp(converted, "true") == 0) { return 1.0f; }
+    else if (strcmp(converted, "false") == 0) { return 0.0f; }
     /* and then give up and use atof */
-    else { val = atof(converted); }
-    free(converted); return val;
+    else { return atof(string); }
 }
 
 int coerceStringToBool(char *string) {
-    char *converted = lowerize(string); int val = 0;
-    if (!converted) return 0;
-    if (strcmp(converted, "true") == 0) { val = 1; } 
-    else if (strcmp(converted, "false") == 0) { val = 0.; }
-    else { val = atoi(converted) ? 1 : 0; } /* ternary fuckery to set to 1 if true */
-    free(converted); return val;
+    char converted[255];
+    if (strlen(string) >= 255) return 0;
+    strcpy(converted, string);
+    lowerizeInPlace(converted);
+    if (!strlen(converted)) return 0;
+    if (strcmp(converted, "true") == 0) { return 1; }
+    else if (strcmp(converted, "false") == 0) { return 0; }
+    else { return atoi(string) ? 1 : 0; } /* ternary fuckery to set to 1 if true */
 }
 
 char *stringFromVar(variable *var) { /* this already does the job of coercing strings over */
-    if (*var->type == STR) { return stroustrup(var->data->str); }
-    else if (*var->type == BOOL) { return var->data->boolean ? stroustrup("true") : stroustrup("false"); }
+    if (*var->type == STR) { return var->data->str; }
+    else if (*var->type == BOOL) { return var->data->boolean ? "true" : "false"; }
     else if (*var->type == NUM) { return grabStringOfNumber(var->data->num); }
-    else { return NULL; }
+    else { return ""; }
 }
 
 double numFromVar(variable *src) {
@@ -117,12 +122,15 @@ void varcpy(variable *dest, variable *src) {
 }
 
 int grabType(char *input) {
-    char *type = lowerize(input);
-    if (strcmp(type, "str") == 0) { free(type); return STR; }
-    else if (strcmp(type, "num") == 0) { free(type); return NUM; }
-    else if (strcmp(type, "bool") == 0) { free(type); return BOOL; }
-    else if (strcmp(type, "in") == 0) { free(type); return IN; }
-    else { free(type); return -1; }
+    char type[6];
+    if (!input || strlen(input) > 5) return -1;
+    strcpy(type, input);
+    lowerizeInPlace(type);
+    if (strcmp(type, "str") == 0) { return STR; }
+    else if (strcmp(type, "num") == 0) { return NUM; }
+    else if (strcmp(type, "bool") == 0) { return BOOL; }
+    else if (strcmp(type, "in") == 0) { return IN; }
+    else { return -1; }
 }
 
 size_t stringLenFromVar(variable var) {

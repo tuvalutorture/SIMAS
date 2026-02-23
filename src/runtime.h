@@ -15,12 +15,13 @@ typedef struct openFile openFile;
 struct instruction {
     operation *op;
     char **arguments;
-    int argumentCount;
+    int argumentCount, argOffset;
 };
 
 struct openFile {
     char *path;
-    instruction **instructions;
+    char *instructionSource;
+    instruction *instructions;
     HashMap variables;
     HashMap labels;
     HashMap lists; 
@@ -49,6 +50,7 @@ extern int commandPrompt;
 extern InstructionSet ValidInstructions;
 
 void cry(char *msg);
+void freeFile(openFile file);
 void freeInstructionSet(InstructionSet *isa);
 void handleError(char *errorMsg, int errCode, int fatal, openFile *file);
 void snadmwithc(void);

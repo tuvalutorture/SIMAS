@@ -19,20 +19,16 @@ void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 
 void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
 
 char *grabStringOfNumber(double num) {
-    int i, len, zeroes = 0; char buffer[331], *final;
-    sprintf(buffer, "%f", (float)num); /* gatta love that unsafety hehehe... it'll be fine */ 
+    int i, len, zeroes = 0; static char buffer[331];
+    sprintf(buffer, "%f", (float)num); /* gatta love that unsafety hehehe... it'll be fine */
     len = strlen(buffer);
     for (i = 1; i < 7; i++) { if (buffer[len - i] == '0') { zeroes++; buffer[len - i] = '\0'; } else break; } /* yoink trailing zeroes */
     if (zeroes == 6) { buffer[len - 7] = '\0'; } /* terminate it if it's just trailing zeroes */
-    final = (char *)malloc(strlen(buffer) * sizeof(char) + 1);
-    strcpy(final, buffer);
-    return final;
+    return buffer;
 }
 
-size_t grabLengthOfNumber(double num) { 
-    char *temp = grabStringOfNumber(num); 
-    size_t len = strlen(temp); 
-    free(temp); return len; 
+size_t grabLengthOfNumber(double num) {
+    return strlen(grabStringOfNumber(num));
 }
 
 void formatEscapes(char *string) {
@@ -65,8 +61,10 @@ char *joinStringsSentence(char **strings, int stringCount, int offset) {
     return finalString;
 }
 
-char *unParseInstructions(instruction *inst, InstructionSet *isa) {
-    int i; char *final, *foundKey = searchForKey(&isa->operations, inst->op); size_t size = strlen(foundKey) + 2;
+char *unParseInstructions(instruction *inst, InstructionSet isa) {
+    int i; char *final, *foundKey = searchForKey(isa.operations, (void *)inst->op); size_t size;
+    if (inst->op == NULL || foundKey == NULL) return NULL;
+    size = strlen(foundKey) + 2;
     for (i = 0; i < inst->argumentCount; i++) { size += strlen(inst->arguments[i]) + 1; }
     final = (char *)calloc(size, sizeof(char)); if (!final) return NULL;
     strcat(final, foundKey);
@@ -116,7 +114,6 @@ char **stringSlicer(char *string, int *elementCount) { /* strtok? what the fuck 
         int tokenLen = 0;
         for (i = offset; i < len; i++) { if (isWhitespace(string[i])) { offset += 1; } else {break;}}
         for (i = offset; i < len; i++) { if (!isWhitespace(string[i])) { tokenLen += 1; } else {break;}}
-        DEBUG_PRINTF("allocating for token %d\n", currentToken);
         arr[currentToken] = string + offset;
         arr[currentToken][tokenLen] = '\0';
         offset += tokenLen + 1;

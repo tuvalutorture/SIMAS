@@ -20,8 +20,8 @@ void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     new->parameterCount = atoi(arguments[1]);
     new->start = caller->programCounter; 
     for (i = caller->programCounter + 1; i < caller->instructionCount; i++) { 
-        if (caller->instructions[i]->op->functionPointer == (void(*)(void*))fun_fun) { free(new); handleError("cannot define function within function", 84, 0, caller); return; }
-        if (caller->instructions[i]->op->functionPointer == (void(*)(void*))nop_end) { new->end = i; break; }
+        if (caller->instructions[i].op->functionPointer == (void(*)(void*))fun_fun) { free(new); handleError("cannot define function within function", 84, 0, caller); return; }
+        if (caller->instructions[i].op->functionPointer == (void(*)(void*))nop_end) { new->end = i; break; }
     }
     if (i == caller->instructionCount) { free(new); handleError("no end to function", 84, 0, caller); return; }
     addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
@@ -44,24 +44,24 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
             temp = grabStringOfNumber((double)i + 1.0f);
             varName = (char *)calloc(strlen(temp) + 2, sizeof(char));
             varName[0] = '$'; strcat(varName, temp);
-            free(temp); tempNames[i] = varName; types[i] = varType;
+            tempNames[i] = varName; types[i] = varType;
             if (varType == 'l' || varType == 'a') { listCount += 1;}
             else if (varType == 'v' || varType == 's' || varType == 'b' || varType == 'n' || varType == 'p') { varCount += 1; }
             else { free(tempNames); handleError("invalid type specification", 30, 0, caller); }
-        }    
-        if (listCount > 0) { listNames = (char **)malloc(sizeof(char *) * listCount); listPtrs = (list **)calloc(listCount, sizeof(list *)); } 
+        }
+        if (listCount > 0) { listNames = (char **)malloc(sizeof(char *) * listCount); listPtrs = (list **)calloc(listCount, sizeof(list *)); }
         if (varCount > 0) { varNames = (char **)malloc(sizeof(char *) * varCount); varPtrs = (variable **)calloc(varCount, sizeof(variable *)); }
-        for (i = 0; i < func->parameterCount; i++) { 
-            if (types[i] == 'l' || types[i] == 'a') { 
+        for (i = 0; i < func->parameterCount; i++) {
+            if (types[i] == 'l' || types[i] == 'a') {
                 list *src = searchHashMap(&caller->lists, arguments[i * 2 + 2]), *test, *li = (list *)calloc(1, sizeof(list));
-                listNames[listIndex] = tempNames[i]; 
+                listNames[listIndex] = tempNames[i];
                 if (src == NULL) { free(tempNames); free(listNames); if (varNames) { free(varNames); } handleError("list expected", 26, 0, caller); }
                 if (types[i] == 'l') { li->elements = (int *)calloc(1, sizeof(int)); listcpy(li, src); }
                 else { li->variables = src->variables; li->isAlias = 1; li->elements = src->elements; }
                 listPtrs[listIndex] = li;
                 test = searchHashMap(&caller->lists, listNames[listIndex]);
-                if (test != NULL) { deleteItemFromMap(&caller->lists, listNames[listIndex]); } 
-                addItemToMap(&caller->lists, li, listNames[listIndex], NULL); 
+                if (test != NULL) { deleteItemFromMap(&caller->lists, listNames[listIndex]); }
+                addItemToMap(&caller->lists, li, listNames[listIndex], NULL);
                 listIndex += 1;
             } else { /* since we check types earlier it's safe to assume any non-'l' type will be a var */
                 variable *newVar = create_variable(), *old, *test;
@@ -76,7 +76,7 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
                 test = searchHashMap(&caller->variables, varNames[varIndex]);
                 if (test != NULL) { /* there shouldn't be any other $i vars */
                     if (test->data->str != NULL && *test->type == STR) free(test->data->str);
-                    deleteItemFromMap(&caller->variables, varNames[varIndex]); 
+                    deleteItemFromMap(&caller->variables, varNames[varIndex]);
                 }
                 addItemToMap(&caller->variables, newVar, varNames[varIndex], NULL);
                 varIndex += 1;
@@ -85,13 +85,13 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
         free(tempNames); free(types);
     }
     caller->programCounter = func->start + 1;
-    while (caller->instructions[caller->programCounter]->op->functionPointer != (void(*)(void*))nop_ret) {
+    while (caller->instructions[caller->programCounter].op->functionPointer != (void(*)(void*))nop_ret) {
         for (i = 0; i < varCount; i++) { if (searchHashMap(&caller->variables, varNames[i]) == NULL) { addItemToMap(&caller->variables, varPtrs[i], varNames[i], NULL); }} /* re-adds any missing variables, should another function have prematurely deleted/overwritten it */
         for (i = 0; i < listCount; i++) { if (searchHashMap(&caller->lists, listNames[i]) == NULL) { addItemToMap(&caller->lists, listPtrs[i], listNames[i], NULL); }}
         executeInstruction(caller); caller->programCounter += 1;
         if (caller->programCounter == func->end) caller->programCounter = func->start + 2;
     }
-    arguments = caller->instructions[caller->programCounter]->arguments; argumentCount = caller->instructions[caller->programCounter]->argumentCount; /* grab the current arguments */
+    arguments = caller->instructions[caller->programCounter].arguments; argumentCount = caller->instructions[caller->programCounter].argumentCount; /* grab the current arguments */
     if (argumentCount >= 2) {
         char *retName = (char *)calloc(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]);
         retName[0] = '$'; strcat(retName, funcName);

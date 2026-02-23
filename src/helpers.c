@@ -11,7 +11,7 @@
 
 /* var ops  */
 void negateBoolean(variable *var) { int result = !boolFromVar(var); set_variable_value(var, BOOL, NULL, 0, result); }
-void writeFromVar(variable *var, char *path) { char *variable = stringFromVar(var); writeFile(path, variable); free(variable); } 
+void writeFromVar(variable *var, char *path) { writeFile(path, stringFromVar(var)); }
 void equalityCheckVarVsConst(HashMap *varMap, char **arguments, int flip) {
     variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = create_variable();
     int output = 0, type = grabType(arguments[0]); *var2->type = type; var2->data->str = NULL;
@@ -54,7 +54,7 @@ void convert(variable *var, int type) {
                 if (var->data->num != 0.0) { var->data->boolean = 1; }
                 else { var->data->boolean = 0; }
             } else if (type == STR) {
-                var->data->str = grabStringOfNumber(var->data->num);
+                var->data->str = stroustrup(grabStringOfNumber(var->data->num));
             }
         } else if (*var->type == BOOL) {
             int truth = var->data->boolean;
@@ -64,9 +64,9 @@ void convert(variable *var, int type) {
                 if (!truth) var->data->str = stroustrup("false");
             }
         } else if (*var->type == STR) {
-            char *temp = stroustrup(var->data->str); if (var->data->str != NULL) { free(var->data->str); }
+            char *temp = var->data->str;
             if (type == BOOL) { var->data->boolean = trueOrFalse(temp); }
-            else if (type == NUM) { var->data->num = atof(temp); }
+            else if (type == NUM) { var->data->num = coerceStringToNum(temp); }
             free(temp);
         }
         *var->type = type;
@@ -87,7 +87,7 @@ void setVar(variable *var, int type, char* value, double num, int boolean, int m
 }
 
 void standardMath(openFile *current, char **arguments, char operation) {
-    double op1 = 0, op2 = 0, result = 0; int returnType = grabType(arguments[0]); char *numStr = NULL;
+    double op1 = 0, op2 = 0, result = 0; int returnType = grabType(arguments[0]);
     variable *var1 = searchHashMap(&current->variables, arguments[1]), *var2 = searchHashMap(&current->variables, arguments[2]); 
     if (var1 == NULL) { var1 = create_variable(); addItemToMap(&current->variables, var1, arguments[1], (void(*)(void *))freeVariable); *var1->type = NUM; }
     op1 = numFromVar(var1);
@@ -102,9 +102,7 @@ void standardMath(openFile *current, char **arguments, char operation) {
         default: op1 = 0;
     }
     DEBUG_PRINTF("%f\n", result);
-    if (returnType == STR) numStr = grabStringOfNumber(result);
-    set_variable_value(var1, returnType, numStr, result, (result ? 1 : 0));
-    if (numStr) free(numStr);
+    set_variable_value(var1, returnType, grabStringOfNumber(result), result, (result ? 1 : 0));
 }
 
 void variableSet(openFile *current, char **arguments, int argumentCount) {
@@ -170,10 +168,9 @@ void compareBools(HashMap *varMap, char **arguments, char operation, char flip) 
 int areTwoVarsEqual(variable *var1, variable *var2) {
     if (*var1->type == STR) { 
         char *temp = stringFromVar(var2); int ret = 0; 
-        if (temp == NULL) { return 0; } if (var1->data->str == NULL) { free(temp); return 0; }
+        if (var1->data->str == NULL) return 0;
         ret = strcmp(var1->data->str, temp) ? 0 : 1; /* it shall only return true IF the comparison is true, which for strcmp is zero, oddly enoguh */
-        free(temp);
-        return ret; 
+        return ret;
     }
     else if (*var1->type == NUM && var1->data->num == numFromVar(var2)) { return 1; }
     else if (*var1->type == BOOL && var1->data->boolean == boolFromVar(var2)) { return 1; }
@@ -210,14 +207,10 @@ char *formatList(list li) {
 
     strcat(final, "[");
     for (i = 0; i < *li.elements; i++) {
-        char *temp = stringFromVar(li.variables[i]);
-        if (temp) {
-            if (*li.variables[i]->type == STR) strcat(final, "\"");
-            strcat(final, temp);
-            if (*li.variables[i]->type == STR) strcat(final, "\"");
-            free(temp);
-            if (i + 1 != *li.elements) strcat(final, ","); /* make sure no trailing comma is left */
-        }
+        if (*li.variables[i]->type == STR) strcat(final, "\"");
+        strcat(final, stringFromVar(li.variables[i]));
+        if (*li.variables[i]->type == STR) strcat(final, "\"");
+        if (i + 1 != *li.elements) strcat(final, ","); /* make sure no trailing comma is left */
     }
     strcat(final, "]");
     return final;
@@ -267,18 +260,22 @@ variable *indexList(openFile *current, list *li, char *indexArg) {
 
 void listAppendConstant(list *li, char **arguments, int argumentCount) {
     int type = grabType(arguments[1]);
-    variable *var = create_variable(); *var->type = type;
-    if (type == NUM) { var->data->num = coerceStringToNum(arguments[2]); }
-    else if (type == BOOL) { var->data->boolean = coerceStringToBool(arguments[2]); }
-    else if (type == STR) { var->data->str = joinStringsSentence(arguments, argumentCount, 2); }
-    appendElementToList(li, var); freeVariable(var);
+    variable var; variableData data; var.type = &type; var.data = &data;
+    if (type == NUM) { data.num = coerceStringToNum(arguments[2]); }
+    else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[2]); }
+    else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, 2); }
+    appendElementToList(li, &var);
+    if (type == STR && data.str != NULL) free(data.str);
 }
 
 void listUpdateConstant(openFile *current, list *li, char **arguments, int argumentCount) {
-    char *sentence = joinStringsSentence(arguments, argumentCount, 3); 
-    variable *var = create_variable();
-    set_variable_value(var, grabType(arguments[2]), sentence, atof(arguments[3]), trueOrFalse(arguments[3]));  
-    free(sentence); varcpy(indexList(current, li, arguments[1]), var); freeVariable(var);
+    int type = grabType(arguments[2]);
+    variable var; variableData data; var.type = &type; var.data = &data;
+    if (type == NUM) { data.num = coerceStringToNum(arguments[3]); }
+    else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[3]); }
+    else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, 3); }
+    varcpy(indexList(current, li, arguments[1]), &var);
+    if (type == STR && data.str != NULL) free(data.str);
 }
 
 void setAlias(openFile *current, list *src, char *name) {

@@ -92,13 +92,14 @@ void *searchHashMap(HashMap *map, char *key) {
     else return NULL;
 }
 
-char *searchForKey(HashMap *map, void *item) {
+char *searchForKey(HashMap map, void *item) {
     int i;
-    for (i = 0; i < map->buckets; i++) {
-        listItem *loc = map->items[i].first;
-        if (map->items[i].first == NULL) continue;
+    if (map.items == NULL) return NULL;
+    for (i = 0; i < map.buckets; i++) {
+        listItem *loc = map.items[i].first;
+        if (!loc) continue;
         while (loc != NULL) {
-            if (loc->data == item) return (((hashMapItem *)loc->data)->key);
+            if (loc->data == item) { puts("succ"); return (((hashMapItem *)loc->data)->key);}
             loc = loc->next;
         }
     }
@@ -114,7 +115,7 @@ void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*
     }
     newListItem = (listItem *)calloc(1, sizeof(listItem));
     newItem = (hashMapItem *)malloc(sizeof(hashMapItem));
-    newItem->data = item; newItem->key = stroustrup(key); newItem->freeRoutine = freeRoutine;
+    newItem->data = item; newItem->key = key; newItem->freeRoutine = freeRoutine;
     newListItem->data = newItem;
     DEBUG_PRINTF("added item with key %s\n", key);
     if (location->first == NULL) { location->first = newListItem; }
@@ -125,7 +126,7 @@ void addItemToMap(HashMap *map, void *item, char *key, void (*freeRoutine)(void*
 
 void deleteItemFromMap(HashMap *map, char *key) {
     listItem *nuked = grabHashMapItem(map, key); LinkedList *point = grabHashMapLocation(map, key);
-    DEBUG_PRINT(((hashMapItem *)nuked->data)->key); free(((hashMapItem *)nuked->data)->key);
+    DEBUG_PRINT(((hashMapItem *)nuked->data)->key);
     if (((hashMapItem *)nuked->data)->freeRoutine != NULL) ((hashMapItem *)nuked->data)->freeRoutine(((hashMapItem *)nuked->data)->data);
     free(nuked->data); 
     if (point->first == nuked) point->first = nuked->next != NULL ? nuked->next : NULL;
@@ -143,12 +144,26 @@ void freeHashMap(HashMap map) { /* Noli manere in memoria - Saevam iram et dolor
         while (current != NULL) {
             hashMapItem *item = (hashMapItem *)current->data;
             DEBUG_PRINTF("freeing %s key\n", item->key);
-            free(item->key); 
-            if (item->freeRoutine) item->freeRoutine(item->data); 
+            if (item->freeRoutine) item->freeRoutine(item->data);
             free(item);
             current = current->next;
         }
         freeLinkedList(&map.items[i]); 
     }
     free(map.items);
+}
+
+void freeHashMapKeys(HashMap map) { /* only use if you're SURE that they're allocated */
+    int i;
+    if (map.items == NULL) return;
+    for (i = 0; i < map.buckets; i++) {
+        listItem *current = map.items[i].first;
+        if (current == NULL) continue;
+        while (current != NULL) {
+            hashMapItem *item = (hashMapItem *)current->data;
+            DEBUG_PRINTF("freeing %s key\n", item->key);
+            free(((hashMapItem *)current->data)->key);
+            current = current->next;
+        }
+    }
 }
