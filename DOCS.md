@@ -166,7 +166,6 @@ Note: All comparison operators will OVERWRITE the FIRST variable passed in. Plea
 * All of the list operations:
     * `list new`
         * creates a new list
-        * OPERAND 3+
     * `list appv`
         * append a variable to a list
         * OPERAND 3: data type of the variable(s) (this operand is ignored in CMAS, but must be there to retain structure & compatibility)

@@ -4,8 +4,8 @@
 #include "strings.h"
 #include "runtime.h"
 #include "hashmap.h"
-#include "variables.h"
-#include "functions.h"
+#include "vars.h"
+#include "funcs.h"
 #include "helpers.h"
 
 InstructionSet ValidInstructions;
@@ -31,7 +31,14 @@ void cleanFile(openFile *file) { /* cleans a file for re-execution */
 void freeFile(openFile file) {
     int i;
     DEBUG_PRINT("freeing instructions\n");
-    if (file.instructions != NULL) { for (i = 0; i < file.instructionCount; i++) { if (file.instructions[i].arguments != NULL) { free(file.instructions[i].arguments - file.instructions[i].argOffset); }} free(file.instructions); }
+    if (file.instructions != NULL) {
+        for (i = 0; i < file.instructionCount; i++) {
+            if (file.instructions[i].arguments != NULL) {
+                free(file.instructions[i].arguments - file.instructions[i].argOffset); /* this is what we in the industry call an "absolute pro gamer move", as we simply free the pointer behind us instead of storing the location of the pointer to free. */
+            }
+        }
+        free(file.instructions);
+    }
     cleanFile(&file);
     if (file.path != NULL) { free(file.path); }
     if (file.instructionSource != NULL) { free(file.instructionSource); }
@@ -186,36 +193,16 @@ openFile openSimasFile(char *path) {
 
 /* command functions for the CLI */
 void cmd_quit(command *cmd) { } /* this is what we call a pro gamer move */
-void cmd_clear(command *cmd) { freeFile(*cmd->file); memset(cmd->file, 0, sizeof(openFile)); }
 void cmd_debug(command *cmd) { snadmwithc(); }
 void cmd_load(command *cmd) { if (cmd->inst->argumentCount) { freeFile(*cmd->file); *cmd->file = openSimasFile(cmd->inst->arguments[0]); if (cmd->file->path) { puts("loaded successfully"); }}  else { puts("you need to specify a file"); }}
-void cmd_dump(command *cmd) { int i; for (i = 0; i < cmd->file->instructionCount; i++) { char *string = unParseInstructions(&cmd->file->instructions[i]); printf("%d: %s\n", i + 1, string); free(string); }}
 void cmd_run(command *cmd) { if (cmd->file->instructionCount) { executeFile(cmd->file, 0); cleanFile(cmd->file); } else { puts("no instructions to execute"); }}
-void cmd_save(command *cmd) {
-    if (cmd->inst->argumentCount) {
-        FILE* dest = fopen(cmd->inst->arguments[0], "wb");
-        if (dest) {
-            int i;
-            for (i = 0; i < cmd->file->instructionCount; i++) {
-                char *string = unParseInstructions(&cmd->file->instructions[i]);
-                fwrite(string, sizeof(char), strlen(string), dest);
-                free(string); fputc('\n', dest);
-            }
-            fclose(dest); puts("successfully saved!");
-        } else puts("unable to open file");
-    } else puts("you need to specify a file to save to");
-}
 void cmd_help(command *cmd) {
     puts(
         "CMAS Command List:\n"
         "!quit: Quits the CMAS command line.\n"
-        "!clear: Resets the current program.\n"
-        "!edit <index>: Edit the instruction at an index, starting from 1.\n"
-        "!dump: Dumps the current program to terminal.\n"
         "!load <filename>: Loads a SIMAS file.\n"
-        "!save <filename>: Saves the current SIMAS program to disk.\n"
         "!run: Executes the current SIMAS program.\n"
-        "Please read the README.md for a list of all instructions and their operators."
+        "!debug: Enables debug mode."
     );
 }
 
@@ -319,7 +306,7 @@ void cmp_nor(openFile *file) { compareBools(&file->variables, file->instructions
 void cmp_xor(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '!', 0); }
 /* list ops         */
 void lis_del(openFile *file) { list *li = searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]); int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter].arguments[1]); } if (index > *li->elements) { handleError("invalid index", 92, 0, file); } else { removeElementFromList(li, index - 1); }}
-void lis_appv(openFile *file) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[2])); }
+void lis_appv(openFile *file) { int i; for (i = 2; i < file->instructions[file->programCounter].argumentCount; i++) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[i])); }}
 void lis_show(openFile *file) { freeAndPrint(formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]))); }
 void lis_new(openFile *file) { list *new = (list *)calloc(1, sizeof(list)); if (file->instructions[file->programCounter].arguments[0][0] == '$') { free(new); handleError("name is reserved", 99, 0, file); } new->elements = (int *)calloc(1, sizeof(int)); addItemToMap(&file->lists, new, file->instructions[file->programCounter].arguments[0], (void (*)(void *))freeList); }
 void lis_upv(openFile *file) { varcpy(indexList(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[3])); }
@@ -336,7 +323,7 @@ void fun_fun(openFile *file) { registerFunction(file, file->instructions[file->p
 void fun_call(openFile *file) { executeFunction(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
 
 void setUpStdlib(void) {
-    ValidInstructions.operations = create_hashmap(54); ValidInstructions.prefixes = create_hashmap(1);
+    ValidInstructions.operations = create_hashmap(78); ValidInstructions.prefixes = create_hashmap(1);
     addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
     addOperation(&ValidInstructions, "label", NULL, (void(*)(void*))nop_lab, 1); /* no-op */
     addOperation(&ValidInstructions, "end", NULL, (void(*)(void*))nop_end, 1); /* no-op */
@@ -399,9 +386,6 @@ void setUpCommands() {
     addOperation(&ValidCommands, "!quit", NULL, (void(*)(void *))cmd_quit, 0);
     addOperation(&ValidCommands, "!run", NULL, (void(*)(void *))cmd_run, 0);
     addOperation(&ValidCommands, "!load", NULL, (void(*)(void *))cmd_load, 1);
-    addOperation(&ValidCommands, "!save", NULL, (void(*)(void *))cmd_save, 1);
-    addOperation(&ValidCommands, "!dump", NULL, (void(*)(void *))cmd_dump, 0);
-    addOperation(&ValidCommands, "!clear", NULL, (void(*)(void *))cmd_clear, 0);
     addOperation(&ValidCommands, "!help", NULL, (void(*)(void *))cmd_help, 0);
     addOperation(&ValidCommands, "!debug", NULL, (void(*)(void *))cmd_debug, 0);
 }

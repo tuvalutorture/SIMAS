@@ -1,5 +1,5 @@
-#ifndef VARIABLES_H
-#define VARIABLES_H
+#ifndef VARS_H
+#define VARS_H
 
 /* types that a var may be */
 #define STR 1

@@ -4,7 +4,7 @@
 #include <ctype.h>
 
 #include "strings.h"
-#include "variables.h"
+#include "vars.h"
 #include "hashmap.h"
 #include "runtime.h"
 #include "helpers.h"
@@ -166,14 +166,11 @@ void compareBools(HashMap *varMap, char **arguments, char operation, char flip) 
 }
 
 int areTwoVarsEqual(variable *var1, variable *var2) {
-    if (*var1->type == STR) { 
-        char *temp = stringFromVar(var2); int ret = 0; 
+    if (*var1->type == STR) {
         if (var1->data->str == NULL) return 0;
-        ret = strcmp(var1->data->str, temp) ? 0 : 1; /* it shall only return true IF the comparison is true, which for strcmp is zero, oddly enoguh */
-        return ret;
+        return strcmp(var1->data->str, stringFromVar(var2)) ? 0 : 1; /* it shall only return true IF the comparison is true, which for strcmp is zero, oddly enoguh */
     }
-    else if (*var1->type == NUM && var1->data->num == numFromVar(var2)) { return 1; }
-    else if (*var1->type == BOOL && var1->data->boolean == boolFromVar(var2)) { return 1; }
+    else if ((*var1->type == NUM && var1->data->num == numFromVar(var2)) || (*var1->type == BOOL && var1->data->boolean == boolFromVar(var2))) return 1;
     return 0;
 }
 
@@ -259,13 +256,15 @@ variable *indexList(openFile *current, list *li, char *indexArg) {
 }
 
 void listAppendConstant(list *li, char **arguments, int argumentCount) {
-    int type = grabType(arguments[1]);
-    variable var; variableData data; var.type = &type; var.data = &data;
-    if (type == NUM) { data.num = coerceStringToNum(arguments[2]); }
-    else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[2]); }
-    else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, 2); }
-    appendElementToList(li, &var);
-    if (type == STR && data.str != NULL) free(data.str);
+    int type = grabType(arguments[1]), i;
+    for (i = 2; i < argumentCount; i++) {
+        variable var; variableData data; var.type = &type; var.data = &data;
+        if (type == NUM) { data.num = coerceStringToNum(arguments[i]); }
+        else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[i]); }
+        else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, i); }
+        appendElementToList(li, &var);
+        if (type == STR && data.str != NULL) free(data.str);
+    }
 }
 
 void listUpdateConstant(openFile *current, list *li, char **arguments, int argumentCount) {

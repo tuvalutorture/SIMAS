@@ -1,7 +1,7 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include "variables.h"
+#include "vars.h"
 #include "hashmap.h"
 #include "runtime.h"
 

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "strings.h"
-#include "variables.h"
+#include "vars.h"
 #include "hashmap.h"
 #include "runtime.h"
 

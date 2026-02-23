@@ -6,8 +6,8 @@ set(CMAKE_C_STANDARD 90)
 include_directories(src)
 
 add_executable(SIMAS
-        src/functions.c
-        src/functions.h
+        src/funcs.c
+        src/funcs.h
         src/hashmap.c
         src/hashmap.h
         src/helpers.c
@@ -17,5 +17,5 @@ add_executable(SIMAS
         src/simas.c
         src/strings.c
         src/strings.h
-        src/variables.c
-        src/variables.h)
+        src/vars.c
+        src/vars.h)

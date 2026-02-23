@@ -4,12 +4,17 @@
 #include <string.h>
 #include "strings.h"
 #include "runtime.h"
-#include "functions.h"
-#include "variables.h"
+#include "funcs.h"
+#include "vars.h"
 
 extern void fun_fun(openFile *file);
 extern void nop_end(openFile *file);
 extern void nop_ret(openFile *file);
+
+void freeFunc(function *func) {
+    free(func->retName);
+    free(func);
+}
 
 void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     int i; function *new; 
@@ -18,13 +23,15 @@ void registerFunction(openFile *caller, char **arguments, int argumentCount) {
     if (searchHashMap(&caller->functions, arguments[0]) != NULL) handleError("redefinition of function", 57, 0, caller);
     new = (function *)malloc(sizeof(function));
     new->parameterCount = atoi(arguments[1]);
-    new->start = caller->programCounter; 
+    new->start = caller->programCounter;
+    new->retName = (char *)calloc(strlen(arguments[0]) + 2, sizeof(char));
+    new->retName[0] = '$'; strcat(new->retName, arguments[0]);
     for (i = caller->programCounter + 1; i < caller->instructionCount; i++) { 
         if (caller->instructions[i].op->functionPointer == (void(*)(void*))fun_fun) { free(new); handleError("cannot define function within function", 84, 0, caller); return; }
         if (caller->instructions[i].op->functionPointer == (void(*)(void*))nop_end) { new->end = i; break; }
     }
     if (i == caller->instructionCount) { free(new); handleError("no end to function", 84, 0, caller); return; }
-    addItemToMap(&caller->functions, new, arguments[0], free); caller->programCounter = new->end;
+    addItemToMap(&caller->functions, new, arguments[0], (void(*)(void*))freeFunc); caller->programCounter = new->end;
 }
 
 void executeFunction(openFile *caller, char **arguments, int argumentCount) { /* monolith */
@@ -93,8 +100,7 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
     }
     arguments = caller->instructions[caller->programCounter].arguments; argumentCount = caller->instructions[caller->programCounter].argumentCount; /* grab the current arguments */
     if (argumentCount >= 2) {
-        char *retName = (char *)calloc(strlen(funcName) + 2, sizeof(char)), returnType = tolower(arguments[0][0]);
-        retName[0] = '$'; strcat(retName, funcName);
+        char returnType = tolower(arguments[0][0]);
         if (returnType != 'l') {
             variable *returnedVar = create_variable(), *old;
             switch (returnType) {
@@ -104,18 +110,17 @@ void executeFunction(openFile *caller, char **arguments, int argumentCount) { /*
                 case 'b': *returnedVar->type = BOOL; returnedVar->data->boolean = trueOrFalse(arguments[1]); break;
                 default: freeVariable(returnedVar); handleError("invalid type specification", 30, 0, caller); break;
             }
-            old = searchHashMap(&caller->variables, retName); 
+            old = searchHashMap(&caller->variables, func->retName);
             if (old) { freeVariable(old); old = returnedVar; }
-            else { addItemToMap(&caller->variables, returnedVar, retName, (void(*)(void *))freeVariable); };
+            else { addItemToMap(&caller->variables, returnedVar, func->retName, (void(*)(void *))freeVariable); };
         } else {
             list *src = searchHashMap(&caller->lists, arguments[1]), *returned = (list *)calloc(1, sizeof(list)), *old;
             if (src == NULL) { free(returned); handleError("list expected", 26, 0, caller); }
             listcpy(returned, src);
-            old = searchHashMap(&caller->lists, retName);
+            old = searchHashMap(&caller->lists, func->retName);
             if (old) { freeList(old); old = returned; }
-            else { addItemToMap(&caller->lists, returned, retName, (void(*)(void *))freeList); }
+            else { addItemToMap(&caller->lists, returned, func->retName, (void(*)(void *))freeList); }
         }
-        free(retName);
     }
     for (i = 0; i < varCount; i++) { deleteItemFromMap(&caller->variables, varNames[i]); free(varNames[i]); freeVariable(varPtrs[i]); }
     for (i = 0; i < listCount; i++) { deleteItemFromMap(&caller->lists, listNames[i]); free(listNames[i]); freeList(listPtrs[i]); }
