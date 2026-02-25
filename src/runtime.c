@@ -15,8 +15,6 @@ int debugMode = 0;
 int commandPrompt = 0;
 /* nops for control */
 void nop_lab(openFile *file) { }
-void nop_end(openFile *file) { }
-void nop_ret(openFile *file) { }
 void nop_imp(openFile *file) { }
 
 void cry(char *msg) { puts(msg); exit(2847172); }
@@ -44,20 +42,48 @@ void freeFile(openFile file) {
     if (file.instructionSource != NULL) { free(file.instructionSource); }
 }
 
+void push(LinkedList *stack, void *data) {
+    listItem *item = (listItem *)malloc(sizeof(listItem));
+    item->data = data;
+    if (stack->last == NULL) stack->last = item;
+    item->next = stack->first;
+    if (stack->first != NULL) {
+        stack->first->prev = item;
+        item->next = stack->first;
+    }
+    stack->first = item;
+    item->prev = NULL;
+}
+
+void *pop(LinkedList *stack) {
+    void *data;
+    listItem *item = stack->first;
+    if (item == NULL) return NULL;
+    data = item->data;
+    stack->first = item->next;
+    if (stack->first != NULL) stack->first->prev = NULL;
+    if (stack->last == item) stack->last = NULL; /* nullify both if the first is null too */
+    free(item);
+    return data;
+}
+
+void *peek(LinkedList *stack, int offset) {
+    listItem *item = traverseList(offset, 0, stack->first);
+    if (item == NULL) return NULL;
+    return item->data;
+}
+
 void handleError(char *errorMsg, int errCode, int fatal, openFile *file) { /* more often than not, you will likely cause sOME sort of minor memory leak when this is called, as not everything has been properly cleaned up. */
-    char *badInstruction = unParseInstructions(&file->instructions[file->programCounter]);
     if (fatal) { /* veni, veni, venias; ne me mori facias */
-        printf("Fatal error: %s of code %d:\n%s\nPress 'enter' to quit...\n", errorMsg, errCode, badInstruction);
+        printf("Fatal error: %s of code %d\nPress 'enter' to quit...\n", errorMsg, errCode);
         freeFile(*file);
         freeInstructionSet(&ValidInstructions);
         getchar();
-        free(badInstruction);
         exit(errCode); /* theres no real errcodes but we're gonna pretend we do */
     } else {
         char string[512];
-        sprintf(string, "A non-fatal error %d (%s) has occurred on this line: \n%s\nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg, badInstruction);
+        sprintf(string, "A non-fatal error %d (%s) has occurred.\nYou are being entered into the SIMAS command line.\nType \"!help\" for a list of helpful commands.\n", errCode, errorMsg);
         cleanFile(file);
-        free(badInstruction);
         if (!commandPrompt) { beginCommandLine(string, file); }
         else { puts(string); commandPrompt = 2; }
     }
@@ -80,6 +106,7 @@ void preprocessImports(openFile *new) {
             memmove(new->instructions + i, temp.instructions, temp.instructionCount * sizeof(instruction *));
             addItemToMap(&imports, temp.path, temp.path, free); new->instructionCount += temp.instructionCount - 1;
             free(temp.instructions);
+            new->labels.buckets += temp.labels.buckets;
         }
     }
     freeHashMap(imports);
@@ -137,8 +164,7 @@ instruction parseInstructions(char *string, InstructionSet isa) {
 }
 
 void addOperation(InstructionSet *set, char *name, char *prefix, void (*functionPointer)(void*), int minimumArguments) {
-    operation *op = (operation *)malloc(sizeof(operation)); char joined[255];
-    memset(joined, 0, sizeof(joined));
+    operation *op = (operation *)malloc(sizeof(operation)); char joined[255] = {0};
     op->functionPointer = functionPointer;
     op->minArgs = minimumArguments;
     if (prefix != NULL) { strcpy(joined, prefix); strcat(joined, " "); }
@@ -249,7 +275,7 @@ void executeFile(openFile *current, int doFree) {
     preprocessImports(current);
     if (current->labels.buckets > 0) preprocessLabels(current);
     current->lists = create_hashmap(10); current->variables = create_hashmap(10); current->functions = create_hashmap(10); /* 10 to provide breathing room before rehashing */
-    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { executeInstruction(current); if (commandPrompt == 2) { break; }}
+    for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { DEBUG_PRINTF("%d\n", current->programCounter); executeInstruction(current); if (commandPrompt == 2) { break; }}
     if (doFree) freeFile(*current);
 }
 
@@ -266,19 +292,19 @@ void jumpConditionally(int *location, variable *var, int *programCounter, int fl
 /* console i/o      */
 void con_prints(openFile *file) { putc(' ', stdout); }
 void con_println(openFile *file) { puts(""); }
-void con_printv(openFile *file) { printf("%s", stringFromVar((variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0]))); }
+void con_printv(openFile *file) { printf("%s", stringFromVar(findVariable(file, file->instructions[file->programCounter].arguments[0]))); }
 void con_printc(openFile *file) { freeAndPrint(joinStringsSentence(file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount, 0)); }
 /*file i/o          */
-void fio_read(openFile *file) { char *read = readFile(file->instructions[file->programCounter].arguments[0]); set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter].arguments[1]), STR, read, 0.0, 0); free(read); }
+void fio_read(openFile *file) { char *read = readFile(file->instructions[file->programCounter].arguments[0]); set_variable_value(createVarIfNotFound(file, file->instructions[file->programCounter].arguments[1]), STR, read, 0.0, 0); free(read); }
 void fio_write(openFile *file) { freeAndWrite(file->instructions[file->programCounter].arguments[0], joinStringsSentence(file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount, 1)); }
-void fio_writev(openFile *file) { writeFromVar(searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]), file->instructions[file->programCounter].arguments[0]); }
+void fio_writev(openFile *file) { writeFromVar(findVariable(file, file->instructions[file->programCounter].arguments[1]), file->instructions[file->programCounter].arguments[0]); }
 /* misc             */
-void etc_not(openFile *file) { negateBoolean(searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0]));  }
+void etc_not(openFile *file) { negateBoolean(findVariable(file, file->instructions[file->programCounter].arguments[0]));  }
 void etc_quit(openFile *file) { if (!commandPrompt) { freeFile(*file); freeInstructionSet(&ValidInstructions); exit(0); } else { cleanFile(file); commandPrompt = 2; }} /* 2 signifies it wants to ENTER the cmd prompt */
 /* jumps            */
 void jmp_jump(openFile *file) { labelJump(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), &file->programCounter); }
-void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 0); }
-void jmp_jumpnv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 1); }
+void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 0); }
+void jmp_jumpnv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 1); }
 /* math             */
 void mat_add(openFile *file) { standardMath(file, file->instructions[file->programCounter].arguments, '+'); }
 void mat_sub(openFile *file) { standardMath(file, file->instructions[file->programCounter].arguments, '-'); }
@@ -286,33 +312,33 @@ void mat_mul(openFile *file) { standardMath(file, file->instructions[file->progr
 void mat_div(openFile *file) { standardMath(file, file->instructions[file->programCounter].arguments, '/'); }
 /* variable ops     */
 void var_set(openFile *file) { variableSet(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
-void var_type(openFile *file) { grabTypeFromVar(*(variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0]), createVarIfNotFound(&file->variables, file->instructions[file->programCounter].arguments[1])); }
-void var_conv(openFile *file) { convert(searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0]), grabType(file->instructions[file->programCounter].arguments[1])); }
-void var_copy(openFile *file) { if (file->instructions[file->programCounter].arguments[1][0] == '$') { handleError("name is reserved", 99, 0, file); } varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter].arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0])); }
-void var_ptr(openFile *file) { if (file->instructions[file->programCounter].arguments[0][0] == '$') { handleError("cannot create pointer to reserved variable", 94, 0, file); } setPointer(file, (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]); }
+void var_type(openFile *file) { grabTypeFromVar(*findVariable(file, file->instructions[file->programCounter].arguments[0]), createVarIfNotFound(file, file->instructions[file->programCounter].arguments[1])); }
+void var_conv(openFile *file) { convert(findVariable(file, file->instructions[file->programCounter].arguments[0]), grabType(file->instructions[file->programCounter].arguments[1])); }
+void var_copy(openFile *file) { varcpy(createVarIfNotFound(file, file->instructions[file->programCounter].arguments[1]), findVariable(file, file->instructions[file->programCounter].arguments[0])); }
+void var_ptr(openFile *file) { if (file->instructions[file->programCounter].arguments[0][0] == '$') { handleError("cannot create pointer to reserved variable", 94, 0, file); } setPointer(file, findVariable(file, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]); }
 /* comparison       */
-void cmp_gt(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter].arguments, '>'); }
-void cmp_gte(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter].arguments, ']'); }
-void cmp_st(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter].arguments, '<'); }
-void cmp_ste(openFile *file) { compareNums(&file->variables, file->instructions[file->programCounter].arguments, '['); }
-void cmp_eqv(openFile *file) { equalityCheckVarVsVar(searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[2]), 0); }
-void cmp_neqv(openFile *file) { equalityCheckVarVsVar(searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[2]), 1); }
-void cmp_eqc(openFile *file) { equalityCheckVarVsConst(&file->variables, file->instructions[file->programCounter].arguments, 0); }
-void cmp_neqc(openFile *file) { equalityCheckVarVsConst(&file->variables, file->instructions[file->programCounter].arguments, 1); }
-void cmp_and(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '&', 0); }
-void cmp_nand(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '&', 1); }
-void cmp_or(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '|', 0); }
-void cmp_nor(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '|', 1); }
-void cmp_xor(openFile *file) { compareBools(&file->variables, file->instructions[file->programCounter].arguments, '!', 0); }
+void cmp_gt(openFile *file) { compareNums(file, file->instructions[file->programCounter].arguments, '>'); }
+void cmp_gte(openFile *file) { compareNums(file, file->instructions[file->programCounter].arguments, ']'); }
+void cmp_st(openFile *file) { compareNums(file, file->instructions[file->programCounter].arguments, '<'); }
+void cmp_ste(openFile *file) { compareNums(file, file->instructions[file->programCounter].arguments, '['); }
+void cmp_eqv(openFile *file) { equalityCheckVarVsVar(findVariable(file, file->instructions[file->programCounter].arguments[1]), findVariable(file, file->instructions[file->programCounter].arguments[2]), 0); }
+void cmp_neqv(openFile *file) { equalityCheckVarVsVar(findVariable(file, file->instructions[file->programCounter].arguments[1]), findVariable(file, file->instructions[file->programCounter].arguments[2]), 1); }
+void cmp_eqc(openFile *file) { equalityCheckVarVsConst(findVariable(file, file->instructions[file->programCounter].arguments[1]), file->instructions[file->programCounter].arguments, 0); }
+void cmp_neqc(openFile *file) { equalityCheckVarVsConst(findVariable(file, file->instructions[file->programCounter].arguments[1]), file->instructions[file->programCounter].arguments, 1); }
+void cmp_and(openFile *file) { compareBools(file, file->instructions[file->programCounter].arguments, '&', 0); }
+void cmp_nand(openFile *file) { compareBools(file, file->instructions[file->programCounter].arguments, '&', 1); }
+void cmp_or(openFile *file) { compareBools(file, file->instructions[file->programCounter].arguments, '|', 0); }
+void cmp_nor(openFile *file) { compareBools(file, file->instructions[file->programCounter].arguments, '|', 1); }
+void cmp_xor(openFile *file) { compareBools(file, file->instructions[file->programCounter].arguments, '!', 0); }
 /* list ops         */
-void lis_del(openFile *file) { list *li = searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]); int index; variable *src = searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter].arguments[1]); } if (index > *li->elements) { handleError("invalid index", 92, 0, file); } else { removeElementFromList(li, index - 1); }}
-void lis_appv(openFile *file) { int i; for (i = 2; i < file->instructions[file->programCounter].argumentCount; i++) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), (variable *)searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[i])); }}
+void lis_del(openFile *file) { list *li = searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]); int index; variable *src = findVariable(file, file->instructions[file->programCounter].arguments[1]); if (src != NULL) { index = numFromVar(src); } else { index = atoi(file->instructions[file->programCounter].arguments[1]); } if (index > *li->elements) { handleError("invalid index", 92, 0, file); } else { removeElementFromList(li, index - 1); }}
+void lis_appv(openFile *file) { int i; for (i = 2; i < file->instructions[file->programCounter].argumentCount; i++) { appendElementToList(searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), findVariable(file, file->instructions[file->programCounter].arguments[i])); }}
 void lis_show(openFile *file) { freeAndPrint(formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]))); }
 void lis_new(openFile *file) { list *new = (list *)calloc(1, sizeof(list)); if (file->instructions[file->programCounter].arguments[0][0] == '$') { free(new); handleError("name is reserved", 99, 0, file); } new->elements = (int *)calloc(1, sizeof(int)); addItemToMap(&file->lists, new, file->instructions[file->programCounter].arguments[0], (void (*)(void *))freeList); }
-void lis_upv(openFile *file) { varcpy(indexList(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]), searchHashMap(&file->variables, file->instructions[file->programCounter].arguments[3])); }
-void lis_acc(openFile *file) { varcpy(createVarIfNotFound(&file->variables, file->instructions[file->programCounter].arguments[2]), indexList(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1])); }
+void lis_upv(openFile *file) { varcpy(indexList(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]), findVariable(file, file->instructions[file->programCounter].arguments[3])); }
+void lis_acc(openFile *file) { varcpy(createVarIfNotFound(file, file->instructions[file->programCounter].arguments[2]), indexList(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1])); }
 void lis_load(openFile *file) { loadList(&file->lists, file->instructions[file->programCounter].arguments[0], file->instructions[file->programCounter].arguments[1]); }
-void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(&file->variables, file->instructions[file->programCounter].arguments[1]), NUM, NULL, *((list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]))->elements, 0); }
+void lis_len(openFile *file) { set_variable_value(createVarIfNotFound(file, file->instructions[file->programCounter].arguments[1]), NUM, NULL, *((list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]))->elements, 0); }
 void lis_dump(openFile *file) { freeAndWrite(file->instructions[file->programCounter].arguments[1], formatList(*(list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]))); }
 void lis_upc(openFile *file) { listUpdateConstant(file, ((list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0])), file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
 void lis_appc(openFile *file) { listAppendConstant(searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
@@ -320,14 +346,14 @@ void lis_copy(openFile *file) { list *li = searchHashMap(&file->lists, file->ins
 void lis_alias(openFile *file) { if (file->instructions[file->programCounter].arguments[0][0] == '$') { handleError("cannot create alias to reserved list", 95, 0, file); } setAlias(file, (list *)searchHashMap(&file->lists, file->instructions[file->programCounter].arguments[0]), file->instructions[file->programCounter].arguments[1]); }
 /* function ops     */
 void fun_fun(openFile *file) { registerFunction(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
-void fun_call(openFile *file) { executeFunction(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
+void fun_call(openFile *file) { callFunction(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
+void fun_ret(openFile *file) { returnFunction(file, file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount); }
+void fun_end(openFile *file) { file->programCounter = ((function *)peek(&file->stack, 0))->start; }
 
 void setUpStdlib(void) {
     ValidInstructions.operations = create_hashmap(78); ValidInstructions.prefixes = create_hashmap(1);
     addItemToMap(&ValidInstructions.prefixes, "list", "list", NULL);
     addOperation(&ValidInstructions, "label", NULL, (void(*)(void*))nop_lab, 1); /* no-op */
-    addOperation(&ValidInstructions, "end", NULL, (void(*)(void*))nop_end, 1); /* no-op */
-    addOperation(&ValidInstructions, "ret", NULL, (void(*)(void*))nop_ret, 0); /* no-op */
     addOperation(&ValidInstructions, "import", NULL, (void(*)(void*))nop_imp, 1); /* no-op */
     addOperation(&ValidInstructions, "print", NULL, (void(*)(void*))con_printv, 1);
     addOperation(&ValidInstructions, "println", NULL, (void(*)(void*))con_println, 0);
@@ -379,6 +405,8 @@ void setUpStdlib(void) {
     addOperation(&ValidInstructions, "copyl", NULL, (void(*)(void*))lis_copy, 2);
     addOperation(&ValidInstructions, "fun", NULL, (void(*)(void *))fun_fun, 2);
     addOperation(&ValidInstructions, "call", NULL, (void(*)(void *))fun_call, 2);
+    addOperation(&ValidInstructions, "ret", NULL, (void(*)(void*))fun_ret, 0);
+    addOperation(&ValidInstructions, "end", NULL, (void(*)(void*))fun_end, 1);
 }
 
 void setUpCommands() {

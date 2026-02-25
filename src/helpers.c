@@ -12,18 +12,18 @@
 /* var ops  */
 void negateBoolean(variable *var) { int result = !boolFromVar(var); set_variable_value(var, BOOL, NULL, 0, result); }
 void writeFromVar(variable *var, char *path) { writeFile(path, stringFromVar(var)); }
-void equalityCheckVarVsConst(HashMap *varMap, char **arguments, int flip) {
-    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = create_variable();
-    int output = 0, type = grabType(arguments[0]); *var2->type = type; var2->data->str = NULL;
-    if (type == NUM) { var2->data->num = atof(arguments[2]); }
-    else if (type == STR) { var2->data->str = stroustrup(arguments[2]); }
-    else if (type == BOOL) { var2->data->boolean = trueOrFalse(arguments[2]); } 
-    if (var1 == NULL) { cry("No variable!"); }
-    output = flip ? !areTwoVarsEqual(var1, var2) : areTwoVarsEqual(var1, var2);
-    if (*var1->type == STR && var1->data->str != NULL) free(var1->data->str);
-    *var1->type = BOOL;
-    var1->data->boolean = output;
-    freeVariable(var2);
+void equalityCheckVarVsConst(variable *var, char **arguments, int flip) {
+    variable var2; variableData data;
+    int output = 0, type = grabType(arguments[0]); var2.type = &type; data.str = NULL;
+    if (type == NUM) { data.num = atof(arguments[2]); }
+    else if (type == STR) { data.str = arguments[2]; }
+    else if (type == BOOL) { data.boolean = trueOrFalse(arguments[2]); }
+    if (var == NULL) { cry("No variable to compare against!"); }
+    var2.data = &data;
+    output = flip ? !areTwoVarsEqual(var, &var2) : areTwoVarsEqual(var, &var2);
+    if (*var->type == STR && var->data->str != NULL) free(var->data->str);
+    *var->type = BOOL;
+    var->data->boolean = output;
 }
 
 void equalityCheckVarVsVar(variable *var1, variable *var2, int flip) {
@@ -40,10 +40,9 @@ void setPointer(openFile *current, variable *src, char *name) {
     if (!src) handleError("invalid pointer target", 19, 0, current);
     if (name[0] == '$') handleError("name is reserved", 99, 0, current);
     new = searchHashMap(&current->variables, name);
-    if (new != NULL && !new->isPtr) { handleError("cannot convert a variable to pointer", 36, 0, current); }
-    else if (new == NULL) new = (variable *)calloc(1, sizeof(variable)); 
-    new->data = src->data; new->type = src->type;
-    new->isPtr = 1; addItemToMap(&current->variables, new, name, (void(*)(void *))freeVariable);
+    if (new != NULL && !new->isPtr) { handleError("cannot convert a variable to pointer", 36, 0, current); return; }
+    new = createPointer(src);
+    addItemToMap(&current->variables, new, name, (void(*)(void *))freeVariable);
 }
 
 void convert(variable *var, int type) {
@@ -88,8 +87,8 @@ void setVar(variable *var, int type, char* value, double num, int boolean, int m
 
 void standardMath(openFile *current, char **arguments, char operation) {
     double op1 = 0, op2 = 0, result = 0; int returnType = grabType(arguments[0]);
-    variable *var1 = searchHashMap(&current->variables, arguments[1]), *var2 = searchHashMap(&current->variables, arguments[2]); 
-    if (var1 == NULL) { var1 = create_variable(); addItemToMap(&current->variables, var1, arguments[1], (void(*)(void *))freeVariable); *var1->type = NUM; }
+    variable *var1 = findVariable(current, arguments[1]), *var2 = findVariable(current, arguments[2]);
+    if (var1 == NULL) { handleError("OPERAND 1 must be a valid variable!", 5738, 0, current); return; }
     op1 = numFromVar(var1);
     if (var2 == NULL) { op2 = coerceStringToNum(arguments[2]); }
     else { op2 = numFromVar(var2); }
@@ -111,10 +110,10 @@ void variableSet(openFile *current, char **arguments, int argumentCount) {
     if (type == STR) concatenated = joinStringsSentence(arguments, argumentCount, 2);
     if (type == IN && argumentCount > 3) charCount = atoi(arguments[3]);
     switch (type) {
-        case IN: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0, 0, charCount); break;
-        case STR: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, concatenated, 0.0, 0, charCount); break;
-        case NUM: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, atof(arguments[2]), 0, charCount); break;
-        case BOOL: setVar(createVarIfNotFound(&current->variables, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2]), charCount); break;
+        case IN: setVar(createVarIfNotFound(current, arguments[1]), type, NULL, 0, 0, charCount); break;
+        case STR: setVar(createVarIfNotFound(current, arguments[1]), type, concatenated, 0.0, 0, charCount); break;
+        case NUM: setVar(createVarIfNotFound(current, arguments[1]), type, NULL, atof(arguments[2]), 0, charCount); break;
+        case BOOL: setVar(createVarIfNotFound(current, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2]), charCount); break;
         default: handleError("invalid type specification", 30, 0, current);
     }
      if (concatenated != NULL) free(concatenated);
@@ -129,10 +128,10 @@ void grabTypeFromVar(variable check, variable *var) {
     }
 }
 
-void compareNums(HashMap *varMap, char **arguments, char operation) {
-    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]);
+void compareNums(openFile *file, char **arguments, char operation) {
+    variable *var1 = findVariable(file, arguments[1]), *var2 = findVariable(file, arguments[2]);
     double operand1 = 0, operand2 = 0; int result = 0, returnType = grabType(arguments[0]); char *boolStr;
-    if (var1 == NULL) { var1 = create_variable(); addItemToMap(varMap, var1, arguments[1], (void(*)(void *))freeVariable); *var1->type = NUM; }
+    if (var1 == NULL) { handleError("OPERAND 1 must be a variable", 3928, 0, file); return; }
     operand1 = numFromVar(var1); 
     if (var2 == NULL) { operand2 = atof(arguments[2]); }
     else { operand2 = numFromVar(var2); }
@@ -147,10 +146,10 @@ void compareNums(HashMap *varMap, char **arguments, char operation) {
     set_variable_value(var1, returnType, boolStr, (double)result, result);
 }
 
-void compareBools(HashMap *varMap, char **arguments, char operation, char flip) {
-    variable *var1 = searchHashMap(varMap, arguments[1]), *var2 = searchHashMap(varMap, arguments[2]);
+void compareBools(openFile *file, char **arguments, char operation, char flip) {
+    variable *var1 = findVariable(file, arguments[1]), *var2 = findVariable(file, arguments[2]);
     int operand1 = 0, operand2 = 0, result = 0, returnType = grabType(arguments[0]); char *boolStr = NULL;
-    if (var1 == NULL) { var1 = create_variable(); addItemToMap(varMap, var1, arguments[1], (void(*)(void *))freeVariable); *var1->type = BOOL; } 
+    if (var1 == NULL) { handleError("OPERAND 1 must be a variable", 3928, 0, file); return; }
     operand1 = boolFromVar(var1); 
     if (var2 == NULL) { operand2 = coerceStringToBool(arguments[2]); }
     else { operand2 = boolFromVar(var2); }
@@ -249,7 +248,7 @@ void loadList(HashMap *listMap, char *name, char *path) {
 }
 
 variable *indexList(openFile *current, list *li, char *indexArg) {
-    int index; variable *src = searchHashMap(&current->variables, indexArg);
+    int index; variable *src = findVariable(current, indexArg);
     if (src != NULL) { index = numFromVar(src); } else { index = atoi(indexArg); }
     if (index > *li->elements || index < 1) handleError("invalid list index", 20, 0, current);
     return (li->variables[index - 1]);
@@ -282,10 +281,9 @@ void setAlias(openFile *current, list *src, char *name) {
     if (!src) handleError("invalid list target", 27, 0, current);
     if (name[0] == '$') handleError("name is reserved", 99, 0, current);
     new = searchHashMap(&current->lists, name);
-    if (new != NULL && !new->isAlias) { handleError("cannot convert a list to alias", 37, 0, current); }
-    else if (new == NULL) new = (list *)calloc(1, sizeof(list)); 
-    new->variables = src->variables; new->elements = src->elements;
-    new->isAlias = 1; addItemToMap(&current->lists, new, name, (void(*)(void *))freeList);
+    if (new != NULL && !new->isAlias) { handleError("cannot convert a list to alias", 37, 0, current); return; }
+    new = createAlias(src);
+    addItemToMap(&current->lists, new, name, (void(*)(void *))freeList);
 }
 
 /* file i/o */

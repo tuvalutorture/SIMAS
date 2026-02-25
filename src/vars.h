@@ -32,7 +32,10 @@ struct list {
 void freeVariable(variable *var);
 void freeList(list *lis);
 void listcpy(list *dest, list *src);
+variable *findVariable(openFile *file, char *name);
+list *findList(openFile *file, char *name);
 variable *create_variable(void);
+list *create_list(void);
 int trueOrFalse(char *string);
 void set_variable_value(variable *var, int type, char *value, double num, int bool);
 double coerceStringToNum(char *string);
@@ -43,6 +46,8 @@ int boolFromVar(variable *var);
 void varcpy(variable *dest, variable *src);
 int grabType(char *input);
 size_t stringLenFromVar(variable var);
-variable *createVarIfNotFound(HashMap *varMap, char *name);
+variable *createVarIfNotFound(openFile *file, char *name);
+variable *createPointer(variable *source);
+list *createAlias(list *source);
 
 #endif

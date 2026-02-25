@@ -14,11 +14,9 @@ char *grabStringOfNumber(double num);
 size_t grabLengthOfNumber(double num);
 void formatEscapes(char *string);
 char *joinStringsSentence(char **strings, int stringCount, int offset);
-char *unParseInstructions(instruction *inst);
 char *grabUserInput(int maxSize);
 void strip(char *string, char character);
 int isWhitespace(char check);
 char **stringSlicer(char *string, int *elementCount);
-char **stringTokeniser(char *string, int *elementCount);
 
 #endif

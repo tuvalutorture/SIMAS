@@ -26,6 +26,7 @@ struct openFile {
     HashMap labels;
     HashMap lists; 
     HashMap functions;
+    LinkedList stack;
     int instructionCount;
     int programCounter;
 };
@@ -58,6 +59,10 @@ openFile openSimasFile(char *path);
 void beginCommandLine(char *entryMsg, openFile *passed);
 void setUpCommands(void);
 void setUpStdlib(void);
+
+void push(LinkedList *stack, void *data);
+void *pop(LinkedList *stack);
+void *peek(LinkedList *stack, int offset);
 
 void executeFile(openFile *current, int doFree);
 void executeInstruction(openFile *cur);

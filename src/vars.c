@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "strings.h"
 #include "vars.h"
 #include "hashmap.h"
@@ -34,11 +35,38 @@ void listcpy(list *dest, list *src) {
     }
 }
 
+variable *findVariable(openFile *file, char *name) {
+    if (name[0] == '$') {
+        if (searchHashMap(&file->functions, name + 1) != NULL) return searchHashMap(&file->variables, name);
+        return peek(&file->stack, atoi(name + 1));
+    }
+
+    return searchHashMap(&file->variables, name);
+}
+
+list *findList(openFile *file, char *name) {
+    if (name[0] == '$') {
+        if (searchHashMap(&file->functions, name + 1) != NULL) return searchHashMap(&file->lists, name);
+        return peek(&file->stack, atoi(name + 1));
+    }
+
+    return searchHashMap(&file->lists, name);
+}
+
 variable *create_variable(void) { /* dumb allocation wrapper */
     variable *new = (variable *)calloc(1, sizeof(variable));
     new->data = (variableData *)calloc(1, sizeof(variableData));
     new->type = (int *)calloc(1, sizeof(int));
     new->isPtr = 0;
+    return new;
+}
+
+list *create_list(void) {
+    list *new = (list *)calloc(1, sizeof(list));
+    new->variables = (variable **)calloc(1, sizeof(variable *));
+    new->elements = (int *)calloc(1, sizeof(int));
+    *new->elements = 0;
+    new->isAlias = 0;
     return new;
 }
 
@@ -140,8 +168,27 @@ size_t stringLenFromVar(variable var) {
     else { return 0; }
 }
 
-variable *createVarIfNotFound(HashMap *varMap, char *name) {
-    variable *var = searchHashMap(varMap, name);
-    if (!var) { var = create_variable(); addItemToMap(varMap, var, name, (void (*)(void *))freeVariable); }
+variable *createVarIfNotFound(openFile *file, char *name) {
+    variable *var = findVariable(file, name);
+    if (!var) {
+        if (name[0] == '$') handleError("name is reserved", 39, 0, file);
+        var = create_variable(); addItemToMap(&file->variables, var, name, (void(*)(void *))freeVariable);
+    }
     return var; 
+}
+
+variable *createPointer(variable *source) {
+    variable *new = (variable *)malloc(sizeof(variable));
+    new->data = source->data;
+    new->type = source->type;
+    new->isPtr = 1;
+    return new;
+}
+
+list *createAlias(list *source) {
+    list *new = (list *)malloc(sizeof(list));
+    new->variables = source->variables;
+    new->elements = source->elements;
+    new->isAlias = 1;
+    return new;
 }
