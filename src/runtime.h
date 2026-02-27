@@ -23,10 +23,10 @@ struct openFile {
     char *instructionSource;
     instruction *instructions;
     HashMap variables;
-    HashMap labels;
-    HashMap lists; 
+    HashMap lists;
     HashMap functions;
     LinkedList stack;
+    int *jumps, jumpCount;
     int instructionCount;
     int programCounter;
 };

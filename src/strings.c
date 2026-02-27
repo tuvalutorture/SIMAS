@@ -16,7 +16,7 @@ void freeAndPrint(char *allocated) { if (allocated != NULL) { printf("%s", alloc
 char *stripSemicolon(char *input) { int position; char *string = stroustrup(input); if (strlen(input) == 0) { return string; } position = (int)strlen(string) - 1; if (string[position] == ';') string[position] = '\0'; return string; }
 char *lowerize(char *input) { int i, len; char *string = stroustrup(input); if (strlen(input) == 0) { return string; } len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); } return string; }
 void lowerizeInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { string[i] = (char)tolower(string[i]); }}
-void stripSemicolonInPlace(char *string) { int i, len = (int)strlen(string); for (i = 0; i < len; i++) { if (string[i] == ';') { string[i] = '\0'; }}}
+void stripSemicolonInPlace(char *string) { int len = (int)strlen(string); if (string[len - 1] == ';') { string[len - 1] = '\0'; }}
 
 char *grabStringOfNumber(double num) {
     int i, len, zeroes = 0; static char buffer[331];
@@ -35,11 +35,12 @@ void formatEscapes(char *string) {
     int i, sizeOf = strlen(string);
     for (i = 0; i < sizeOf - 1; i++) { 
         if (string[i] == '\\') {
-            char insertion = '\0'; 
+            char insertion = '\0';
             switch(tolower((unsigned char)string[i + 1])) {
                 case 'r': insertion = '\r'; break;
                 case 'n': insertion = '\n'; break;
                 case 't': insertion = '\t'; break;
+                case '\"': insertion = '\"'; break;
                 case '\\': insertion = '\\'; break;
                 default: continue; /* just in case there's no actual escape sequence */
             }
@@ -47,6 +48,7 @@ void formatEscapes(char *string) {
             memmove(string + i + 1, string + 2 + i, (sizeOf - i - 1));
             string[sizeOf] = '\0'; 
             sizeOf -= 1;
+            i += 1;
         }
     } 
 }
@@ -86,21 +88,38 @@ int isWhitespace(char check) {
 }
 
 char **stringSlicer(char *string, int *elementCount) { /* strtok? what the fuck is that? sounds dangerous, no thanks */
-    int len = strlen(string), offset = 0, i, tokens = 0, currentToken = 0; char **arr = NULL;
-    while (isWhitespace(string[offset])) { if (string[offset] == '\0') { return NULL; } offset += 1; } /* skip all beginning whitespace, and bail if it's a blank line */
+    int len = strlen(string), offset = 0, i, tokens = 0, currentToken = 0, inQuotes = 0; char **arr = NULL;
+    while (isWhitespace(string[offset]) && string[offset] != '\"') { if (string[offset] == '\0') { return NULL; } offset += 1; } /* skip all beginning whitespace, and bail if it's a blank line */
     for (i = offset; i <= len; i++) {
-        if (isWhitespace(string[i])) tokens += 1; /* if there's whitespace, it must be the end of a token */
-        if (string[i] != '\0') { int prev = i; while (isWhitespace(string[i]) && i <= len) { i++; } if (prev != i) { i--; }} /* keep goin till we hit another real token, then rewind one back since i will increase agains */
+        if (string[i] == '\"') {inQuotes = 1; i += 1;}
+        if (isWhitespace(string[i]) && !inQuotes) tokens += 1; /* if there's whitespace, it must be the end of a token */
+        if (string[i] != '\0') {
+            int prev = i;
+            if (!inQuotes) { while (isWhitespace(string[i]) && i <= len) { i++; } if (prev != i) { i--; }} /* keep goin till we hit another real token, then rewind one back since i will increase agains */
+            else {
+                while (string[i] != '\"' && i <= len) i++;
+                inQuotes = 0;
+            }
+        }
     }
     if (!tokens) { DEBUG_PRINTF("\"%s\"\n", string); return NULL; }
     arr = (char **)calloc(tokens, sizeof(char *));
     DEBUG_PRINTF("token count: %d\n", tokens);
     while (offset != len && currentToken < tokens) {
-        int tokenLen = 0;
-        for (i = offset; i < len; i++) { if (isWhitespace(string[i])) { offset += 1; } else {break;}}
-        for (i = offset; i < len; i++) { if (!isWhitespace(string[i])) { tokenLen += 1; } else {break;}}
+        int tokenLen = 0; inQuotes = 0;
+        for (i = offset; i < len; i++) {
+            if (isWhitespace(string[i])) { offset += 1; }
+            else { if (string[i] == '\"') { inQuotes = 1; offset += 1; } break; }
+        }
+
+        for (i = offset; i < len; i++) {
+            if ((!isWhitespace(string[i]) && !inQuotes) || (inQuotes && string[i] != '\"') || (inQuotes && string[i - 1] == '\\')) { tokenLen += 1; }
+            else {break;}
+        }
+
         arr[currentToken] = string + offset;
         arr[currentToken][tokenLen] = '\0';
+        formatEscapes(arr[currentToken]);
         offset += tokenLen + 1;
         DEBUG_PRINT(arr[currentToken]);
         currentToken += 1;

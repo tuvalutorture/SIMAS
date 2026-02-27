@@ -107,7 +107,7 @@ void standardMath(openFile *current, char **arguments, char operation) {
 void variableSet(openFile *current, char **arguments, int argumentCount) {
     int type = grabType(arguments[0]), charCount = 256; char *concatenated = NULL;
     if (arguments[1][0] == '$') handleError("name is reserved", 99, 0, current);
-    if (type == STR) concatenated = joinStringsSentence(arguments, argumentCount, 2);
+    if (type == STR) concatenated = arguments[2];
     if (type == IN && argumentCount > 3) charCount = atoi(arguments[3]);
     switch (type) {
         case IN: setVar(createVarIfNotFound(current, arguments[1]), type, NULL, 0, 0, charCount); break;
@@ -116,7 +116,6 @@ void variableSet(openFile *current, char **arguments, int argumentCount) {
         case BOOL: setVar(createVarIfNotFound(current, arguments[1]), type, NULL, 0.0, trueOrFalse(arguments[2]), charCount); break;
         default: handleError("invalid type specification", 30, 0, current);
     }
-     if (concatenated != NULL) free(concatenated);
 }
 
 void grabTypeFromVar(variable check, variable *var) {
@@ -260,7 +259,7 @@ void listAppendConstant(list *li, char **arguments, int argumentCount) {
         variable var; variableData data; var.type = &type; var.data = &data;
         if (type == NUM) { data.num = coerceStringToNum(arguments[i]); }
         else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[i]); }
-        else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, i); }
+        else if (type == STR) { data.str = stroustrup(arguments[i]); }
         appendElementToList(li, &var);
         if (type == STR && data.str != NULL) free(data.str);
     }
@@ -271,7 +270,7 @@ void listUpdateConstant(openFile *current, list *li, char **arguments, int argum
     variable var; variableData data; var.type = &type; var.data = &data;
     if (type == NUM) { data.num = coerceStringToNum(arguments[3]); }
     else if (type == BOOL) { data.boolean = coerceStringToBool(arguments[3]); }
-    else if (type == STR) { data.str = joinStringsSentence(arguments, argumentCount, 3); }
+    else if (type == STR) { data.str = arguments[3]; }
     varcpy(indexList(current, li, arguments[1]), &var);
     if (type == STR && data.str != NULL) free(data.str);
 }
@@ -308,6 +307,6 @@ void writeFile(char *path, char *value) {
     fclose(file);
 }
 
-void freeAndWrite(char *path, char *value) { 
-    writeFile(path, value); free(value); 
+void freeAndWrite(char *path, char *value) {
+    writeFile(path, value); free(value);
 }

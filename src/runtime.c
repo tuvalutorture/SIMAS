@@ -22,8 +22,8 @@ void cry(char *msg) { puts(msg); exit(2847172); }
 void freeInstructionSet(InstructionSet *isa) { freeHashMapKeys(isa->operations); freeHashMap(isa->operations); freeHashMap(isa->prefixes); }
 
 void cleanFile(openFile *file) { /* cleans a file for re-execution */
-    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->labels); freeHashMap(file->functions);
-    file->labels.items = NULL; file->lists.items = NULL; file->variables.items = NULL; file->functions.items = NULL; file->programCounter = 0;
+    freeHashMap(file->variables); freeHashMap(file->lists); freeHashMap(file->functions);
+    file->lists.items = NULL; file->variables.items = NULL; file->functions.items = NULL; file->programCounter = 0;
 }
 
 void freeFile(openFile file) {
@@ -40,6 +40,7 @@ void freeFile(openFile file) {
     cleanFile(&file);
     if (file.path != NULL) { free(file.path); }
     if (file.instructionSource != NULL) { free(file.instructionSource); }
+    if (file.jumps != NULL) { free(file.jumps); }
 }
 
 void push(LinkedList *stack, void *data) {
@@ -89,8 +90,10 @@ void handleError(char *errorMsg, int errCode, int fatal, openFile *file) { /* mo
     }
 }
 
-void preprocessImports(openFile *new) {
-    int i; HashMap imports = create_hashmap(10);
+void preprocessImports(openFile *new, int importCount) {
+    int i; HashMap imports;
+    if (!importCount) return;
+    imports = create_hashmap(importCount * 1.25);
     if (imports.items == NULL) return; /* just bail */
     if (new->path) addItemToMap(&imports, NULL, new->path, NULL);
     for (i = 0; i < new->instructionCount; i++) {
@@ -106,23 +109,37 @@ void preprocessImports(openFile *new) {
             memmove(new->instructions + i, temp.instructions, temp.instructionCount * sizeof(instruction *));
             addItemToMap(&imports, temp.path, temp.path, free); new->instructionCount += temp.instructionCount - 1;
             free(temp.instructions);
-            new->labels.buckets += temp.labels.buckets;
+            new->jumpCount += temp.jumpCount;
         }
     }
     freeHashMap(imports);
 }
 
-void preprocessLabels(openFile *new) {
+void jmp_jump(openFile *file);
+void jmp_jumpv(openFile *file);
+void jmp_jumpnv(openFile *file);
+
+void scanJumps(openFile *new, int *jumpIndex, int location, char *string) {
     int i;
-    if (new->labels.buckets == 0) return;
-    new->labels = create_hashmap(new->labels.buckets); 
+    for (i = 0; i < new->instructionCount; i++) {
+        void (*functionPointer)(void*) = new->instructions[i].op->functionPointer;
+        if (i - 1 > location && new->instructions[i].arguments != NULL && strcmp(new->instructions[i].arguments[0], string) == 0 && new->instructions[i].op->functionPointer == (void(*)(void*))nop_lab) { handleError("redefinition of label", 94, 0, new); return; }
+        if ((functionPointer == (void(*)(void*))jmp_jump || functionPointer == (void(*)(void*))jmp_jumpv || functionPointer == (void(*)(void*))jmp_jumpnv) && !strcmp(new->instructions[i].arguments[0], string)) {
+            new->instructions[i].arguments[0] = (char *)jumpIndex;
+        }
+    }
+}
+
+void preprocessLabels(openFile *new) {
+    int i, labelIndex = 0;
+    if (new->jumpCount == 0) return;
+    new->jumps = malloc(new->jumpCount * sizeof(int));
     for (i = 0; i < new->instructionCount; i++) {
         if (new->instructions[i].op->functionPointer == (void(*)(void*))nop_lab) {
-            int *location;
-            if (searchHashMap(&new->labels, new->instructions[i].arguments[0]) != NULL) { new->programCounter = i; handleError("redefinition of label", 85, 0, new); }
-            location = (int *)malloc(sizeof(int)); *location = i - 1;
-            if (new->instructions[i].arguments[0][0] == '$') { free(location); new->programCounter = i; handleError("name is reserved", 99, 0, new); }
-            addItemToMap(&new->labels, location, new->instructions[i].arguments[0], free);
+            int location = i - 1;
+            if (new->instructions[i].arguments[0][0] == '$') { new->programCounter = i; handleError("name is reserved", 99, 0, new); }
+            new->jumps[labelIndex] = location;
+            scanJumps(new, &new->jumps[labelIndex++], location, new->instructions[i].arguments[0]);
         }
     }
 }
@@ -159,7 +176,54 @@ instruction parseInstructions(char *string, InstructionSet isa) {
     argc = arrCount - index;
     if (argc < 1) free(tokenized);
     new = add_instruction(isa, operation, tokenized + index, prefix, argc, index);
-    if (argc >= 1) { for (i = 0; i < argc; i++) { DEBUG_PRINTF("instruction %s has arg \"%s\"\n", operation, tokenized[index + i]); }}
+    for (i = 0; i < argc; i++) { DEBUG_PRINTF("instruction %s has arg \"%s\"\n", operation, tokenized[index + i]); }
+    return new;
+}
+
+void fun_fun(openFile *file);
+
+openFile openSimasFile(char *path) {
+    unsigned long i, fileIndex = 0, instructionCount = 0, fileSize; char *fileContents; int importCount = 0, inQuotes = 0, inComment = 0;
+    openFile new;
+    memset(&new, 0, sizeof(openFile));
+
+    new.path = stroustrup(path);
+
+    fileContents = readFile(path);
+    if (!fileContents) { printf("failed to find a simas file!\n"); return new; }
+    fileSize = strlen(fileContents);
+
+    for (i = 0; i < fileSize; i++) {
+        if (fileContents[i] == '\"' && !inComment) inQuotes = !inQuotes;
+        if (fileContents[i] == '@' && !inQuotes && !inComment) { instructionCount -= 1; inComment = 1; }
+        if (fileContents[i] == ';' && !inQuotes) { instructionCount += 1; inComment = 0; }
+    }
+
+    new.instructions = (instruction *)malloc(sizeof(instruction) * instructionCount);
+    if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
+    inQuotes = 0;
+
+    while (fileIndex < fileSize) {
+        int size = 0, usedQuotes = 0; char *buffer;
+        while ((fileContents[fileIndex++] != ';' && fileContents[fileIndex - 1] != '\0') || inQuotes) { if (fileContents[fileIndex - 1] == '\"') { inQuotes = !inQuotes; usedQuotes = 1; } size += 1; }
+        DEBUG_PRINTF("\n%d\n", size);
+        DEBUG_PRINT("goin back for more\n");
+        if (fileIndex > fileSize) { break; }
+
+        buffer = fileContents + fileIndex - size - 1;
+        buffer[size] = '\0';
+        if (strchr(buffer, '@') && !usedQuotes) continue;
+
+        new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
+        if (new.instructions[new.instructionCount].op->functionPointer == (void(*)(void*))fun_fun) new.functions.buckets += 1;
+        if (new.instructions[new.instructionCount].op->functionPointer == (void(*)(void*))nop_lab) new.jumpCount += 1;
+        if (new.instructions[new.instructionCount].op->functionPointer == (void(*)(void*))nop_imp) importCount += 1;
+        new.instructionCount += 1;
+    }
+
+    preprocessImports(&new, importCount);
+    new.instructionSource = fileContents;
+
     return new;
 }
 
@@ -170,51 +234,6 @@ void addOperation(InstructionSet *set, char *name, char *prefix, void (*function
     if (prefix != NULL) { strcpy(joined, prefix); strcat(joined, " "); }
     strcat(joined, name);
     addItemToMap(&set->operations, op, stroustrup(joined), free);
-}
-
-openFile openSimasFile(char *path) {
-    unsigned long i, fileIndex = 0, instructionCount = 0, fileSize; char *fileContents;
-    FILE *file = fopen(path, "rb");
-    openFile new;
-    memset(&new, 0, sizeof(openFile));
-
-    if (file == NULL) { printf("failed to find a simas file!\n"); return new; }
-
-    new.path = stroustrup(path);
-
-    fileContents = readFile(path);
-    if (!fileContents) cry("shit died ig");
-    fileSize = strlen(fileContents);
-
-    fclose(file);
-
-    for (i = 0; i < fileSize; i++) {
-        if (fileContents[i] == '@') instructionCount -= 1;
-        if (fileContents[i] == ';') instructionCount += 1;
-    }
-
-    new.instructions = (instruction *)malloc(sizeof(instruction) * instructionCount);
-    if (new.instructions == NULL) cry("welp, cant add more functions, guess its time to die now");
-
-    while (fileIndex < fileSize) {
-        int size = 0; char *buffer;
-        while (fileContents[fileIndex++] != ';' && fileContents[fileIndex - 1] != '\0') { size += 1; }
-        DEBUG_PRINTF("\n%d\n", size);
-        DEBUG_PRINT("goin back for more\n");
-        if (fileIndex > fileSize) { break; }
-
-        buffer = fileContents + fileIndex - size - 1;
-        buffer[size] = '\0';
-        if (strchr(buffer, '@')) continue;
-
-        new.instructions[new.instructionCount] = parseInstructions(buffer, ValidInstructions);
-        if (new.instructions[new.instructionCount].op->functionPointer == (void(*)(void*))nop_lab) new.labels.buckets += 1;
-        new.instructionCount += 1;
-    }
-
-    new.instructionSource = fileContents;
-
-    return new;
 }
 
 /* command functions for the CLI */
@@ -272,20 +291,18 @@ void executeInstruction(openFile *cur) { /* all of these are defined up here so 
 }
 
 void executeFile(openFile *current, int doFree) {
-    preprocessImports(current);
-    if (current->labels.buckets > 0) preprocessLabels(current);
-    current->lists = create_hashmap(10); current->variables = create_hashmap(10); current->functions = create_hashmap(10); /* 10 to provide breathing room before rehashing */
+    if (current->jumpCount > 0) preprocessLabels(current);
+    current->lists = create_hashmap(10); current->variables = create_hashmap(20); /* to provide breathing room before rehashing */
+    if (current->functions.buckets) current->functions = create_hashmap(current->functions.buckets * 1.35);
     for (current->programCounter = 0; current->programCounter < current->instructionCount; current->programCounter++) { DEBUG_PRINTF("%d\n", current->programCounter); executeInstruction(current); if (commandPrompt == 2) { break; }}
     if (doFree) freeFile(*current);
 }
 
 /* here for ctrl flow */
-
-void labelJump(int *location, int *programCounter) { *programCounter = *location; }
-void jumpConditionally(int *location, variable *var, int *programCounter, int flip) {
+void jumpConditionally(int location, variable *var, int *programCounter, int flip) {
     int allowed = boolFromVar(var);
     if (flip) { allowed = !allowed; }
-    if (allowed) labelJump(location, programCounter);
+    if (allowed) *programCounter = location;
 }
 
 /* funcs...         */
@@ -293,18 +310,18 @@ void jumpConditionally(int *location, variable *var, int *programCounter, int fl
 void con_prints(openFile *file) { putc(' ', stdout); }
 void con_println(openFile *file) { puts(""); }
 void con_printv(openFile *file) { printf("%s", stringFromVar(findVariable(file, file->instructions[file->programCounter].arguments[0]))); }
-void con_printc(openFile *file) { freeAndPrint(joinStringsSentence(file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount, 0)); }
+void con_printc(openFile *file) { printf("%s", file->instructions[file->programCounter].arguments[0]); }
 /*file i/o          */
 void fio_read(openFile *file) { char *read = readFile(file->instructions[file->programCounter].arguments[0]); set_variable_value(createVarIfNotFound(file, file->instructions[file->programCounter].arguments[1]), STR, read, 0.0, 0); free(read); }
-void fio_write(openFile *file) { freeAndWrite(file->instructions[file->programCounter].arguments[0], joinStringsSentence(file->instructions[file->programCounter].arguments, file->instructions[file->programCounter].argumentCount, 1)); }
+void fio_write(openFile *file) { writeFile(file->instructions[file->programCounter].arguments[0], file->instructions[file->programCounter].arguments[1]); }
 void fio_writev(openFile *file) { writeFromVar(findVariable(file, file->instructions[file->programCounter].arguments[1]), file->instructions[file->programCounter].arguments[0]); }
 /* misc             */
 void etc_not(openFile *file) { negateBoolean(findVariable(file, file->instructions[file->programCounter].arguments[0]));  }
 void etc_quit(openFile *file) { if (!commandPrompt) { freeFile(*file); freeInstructionSet(&ValidInstructions); exit(0); } else { cleanFile(file); commandPrompt = 2; }} /* 2 signifies it wants to ENTER the cmd prompt */
 /* jumps            */
-void jmp_jump(openFile *file) { labelJump(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), &file->programCounter); }
-void jmp_jumpv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 0); }
-void jmp_jumpnv(openFile *file) { jumpConditionally(searchHashMap(&file->labels, file->instructions[file->programCounter].arguments[0]), findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 1); }
+void jmp_jump(openFile *file) { file->programCounter = *(int*)file->instructions[file->programCounter].arguments[0]; }
+void jmp_jumpv(openFile *file) { jumpConditionally(*(int*)file->instructions[file->programCounter].arguments[0], findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 0); }
+void jmp_jumpnv(openFile *file) { jumpConditionally(*(int*)file->instructions[file->programCounter].arguments[0], findVariable(file, file->instructions[file->programCounter].arguments[1]), &file->programCounter, 1); }
 /* math             */
 void mat_add(openFile *file) { standardMath(file, file->instructions[file->programCounter].arguments, '+'); }
 void mat_sub(openFile *file) { standardMath(file, file->instructions[file->programCounter].arguments, '-'); }

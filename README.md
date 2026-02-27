@@ -25,20 +25,19 @@ SIMAS is case-sensitive, although instructions and data types are not. <br>
 If you want to be polite to SIMAS, you can add `PLEASE` (case-insensitive) and a space character
 in front of any instruction (this can be done as many times as you wish). However, SIMAS will ignore your politeness by ignoring `PLEASE`. <br>
 
-For example, `PLEASE PRINTC Hello!;` and `PRINTC Hello!;` does the same thing.<br>
+For example, `PLEASE PRINTC "Hello!";` and `PRINTC "Hello!";` does the same thing.<br>
 
 #### Extra stuffs to keep in mind:
 * All occurences of `\n` within string constants (such as PRINTC) will be replaced with a new line. This also applies to:
     * `\\` - One backslash
     * `\t` - Tab character
     * `\r` - Carriage return (for files and such)
-* Operations like `WRITE` or `PRINTC` do *not* need quotes to wrap string literals or file pathing.
+    * `\"` - Quotation mark (inside other quotes)
+* Operations like `WRITE` or `PRINTC` need quotes to wrap string literals.
 * All statements, including function definitions or comments **must** end in semicolons.
 * Accessing arguments in functions starts with `$` followed by a number (starting from 1). Ex. `$1`, `$2`, etc.
 * Lists are 1-indexed (starts from 1).
 * Names starting with `$` are reserved, meaning you may not create a variable, list, function, pointer, or alias starting with `$`, nor can you create a pointer/alias to a reserved name.
-
-<br>
 
 **A word of caution** <br>
 As of writing this, SIMASJS is not under active development. I will try my best to mark CMAS-only features,
@@ -54,6 +53,7 @@ will be coerced into that new type & assigned to OPERAND 2.
 * Indexing w/ vars - When indexing a list, CMAS supports indexing using pre-existing vars. This is not supported in SIMASJS as of writing this.
 * ***VERY IMPORTANT!*** Lists passed by value - When calling / returning a function, lists in CMAS are passed by VALUE, not reference. This is different from SIMASJS,
 and MUST be kept in mind if attempting to write cross-compatible programs.
+* String Literals - In CMAS, String Literals (longer than one word/token) are required to be wrapped in quotation marks (`"`), whilst SIMASJS does not hold this requirement. 
 * CMAS is whitespace-insensitive for tokenisation, so instructions may be split by multiple spaces, lines, etc. This differs from SIMASJS, which requires EXACTLY one space per token.
 * CMAS supports calling functions from within functions, which is NOT supported by SIMASJS and will often lead to an infinite loop of execution.
 * CMAS supports chaining certain instructions, such as `LIST APPC`, allowing you to save lines (and memory) by simply chaining instructions instead of having many independent function calls.

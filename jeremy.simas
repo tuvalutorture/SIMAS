@@ -1,22 +1,22 @@
 list new days;
-list appc days str monday;
-list appc days str tuesday;
-list appc days str wednesday;
-list appc days str thursday;
-list appc days str friday;
-list appc days str saturday;
-list appc days str sunday;
+list appc days str "monday";
+list appc days str "tuesday";
+list appc days str "wednesday";
+list appc days str "thursday";
+list appc days str "friday";
+list appc days str "saturday";
+list appc days str "sunday";
 
 list new moods;
-list appc moods str normal;
-list appc moods str bored;
-list appc moods str happy;
-list appc moods str angry;
-list appc moods str hungry;
-list appc moods str tired;
-list appc moods str silly;
-list appc moods str skinless;
-list appc moods str sickly;
+list appc moods str "normal";
+list appc moods str "bored";
+list appc moods str "happy";
+list appc moods str "angry";
+list appc moods str "hungry";
+list appc moods str "tired";
+list appc moods str "silly";
+list appc moods str "skinless";
+list appc moods str "sickly";
 
 set num jeremy_health 100;
 set num jeremy_hunger 60;
@@ -43,15 +43,15 @@ set num jeremy_mood 0;
 
 set num missed_today 0;
 
-set str input ;
+set str input "";
 set num action 0;
 
 set num tmpa 0;
 set num tmpb 0;
 set num tmpc 0;
 
-set str mood_str ;
-set str day_str ;
+set str mood_str "";
+set str day_str "";
 
 set num mood_idx 1;
 set num day_idx 1;
@@ -126,12 +126,12 @@ fun save_game 0;
     list appc state num 0;
     list upv state 17 num missed_today;
 
-    list dump state jeremy.sav;
+    list dump state "jeremy.sav";
     ret;
 end FUN;
 
 fun load_game 0;
-    list load state jeremy.sav;
+    list load state "jeremy.sav";
     list len state state_len;
 
     copy state_len tmpa;
@@ -292,19 +292,19 @@ fun print_time 2;
     set num comp 10;
     gt num comp $1;
     jumpnv hour_print comp;
-    
-    printc 0;
-    
+
+    printc "0";
+
     label hour_print;
     print $1;
 
-    printc :;
+    printc ":";
 
     set num comp 10;
     gt num comp $2;
     jumpnv min_print comp;
 
-    printc 0;
+    printc "0";
 
     label min_print;
     print $2;
@@ -320,19 +320,17 @@ fun print_status 0;
     add num day_idx 1;
     list acc days day_idx day_str;
 
-    printc jeremy is feeling ;
+    printc "jeremy is feeling ";
     print mood_str;
-    printc . you have ;
+    printc ". you have ";
     print money;
-    prints;
-    printc pounds.\n;
+    printc " pounds.\n";
 
-    printc it is ;
+    printc "it is ";
     call print_time v hour v minute;
-    prints;
-    printc on ;
+    printc " on ";
     print day_str;
-    printc .\n;
+    printc ".\n";
 
     copy fired tmpa;
     eqc num tmpa 0;
@@ -350,7 +348,7 @@ fun print_status 0;
     st num tmpc 16;
     jumpnv ps_done tmpc;
 
-    printc protip: go to work to earn money.\n;
+    printc "protip: go to work to earn money.\n";
 
     label ps_done;
     ret;
@@ -381,7 +379,7 @@ fun check_death 0;
     ret;
 
     label cd_dead;
-    printc jeremy is dead. goodbye.\n;
+    printc "jeremy is dead. goodbye.\n";
     quit;
 end FUN;
 
@@ -406,7 +404,7 @@ fun maybe_miss_work 0;
     eqc num tmpa 0;
     jumpnv mmw_done tmpa;
 
-    printc it seems you missed work today...\n;
+    printc "it seems you missed work today...\n";
     add num days_since_last_working 1;
     set num missed_today 1;
 
@@ -414,8 +412,8 @@ fun maybe_miss_work 0;
     ret;
 end FUN;
 
-printc hello welcome to jeremy simulator\nin jeremy sim you take care of jeremy the rat\n;
-printc 1 = new game\n2 = load game\n;
+printc "hello welcome to jeremy simulator\nin jeremy sim you take care of jeremy the rat\n";
+printc "1 = new game\n2 = load game\n";
 set in input;
 conv input num;
 copy input action;
@@ -431,7 +429,7 @@ label start_load;
 call load_game;
 
 label start_game;
-printc game ready.\n;
+printc "game ready.\n";
 
 label main_loop;
 
@@ -447,7 +445,7 @@ call print_status;
 
 call maybe_miss_work;
 
-printc choose:\n1 nothing\n2 feed\n3 pet\n4 play\n5 rest\n6 vet\n7 buy food\n8 work\n9 save\n10 wait\n11 help\n13 quit\n;
+printc "choose:\n1 nothing\n2 feed\n3 pet\n4 play\n5 rest\n6 vet\n7 buy food\n8 work\n9 save\n10 wait\n11 help\n13 quit\n";
 set in input;
 conv input num;
 copy input action;
@@ -455,21 +453,21 @@ copy input action;
 copy action tmpa;
 eqc num tmpa 11;
 jumpnv act_not_help tmpa;
-printc available actions: nothing, feed, pet, play, rest, vet, buy food, work, save, wait, help, quit\n;
+printc "available actions: nothing, feed, pet, play, rest, vet, buy food, work, save, wait, help, quit\n";
 jump after_action;
 label act_not_help;
 
 copy action tmpa;
 eqc num tmpa 13;
 jumpnv act_not_quit tmpa;
-printc you abandoned jeremy. goodbye.\n;
+printc "you abandoned jeremy. goodbye.\n";
 quit;
 label act_not_quit;
 
 copy action tmpa;
 eqc num tmpa 1;
 jumpnv act_not_nothing tmpa;
-printc you do nothing for a whole hour.\n;
+printc "you do nothing for a whole hour.\n";
 sub num jeremy_happy 5;
 sub num jeremy_stamina 1;
 add num hour 1;
@@ -483,12 +481,12 @@ jumpnv act_not_feed tmpa;
 copy food tmpb;
 ste num tmpb 0;
 jumpnv feed_have tmpb;
-printc you do not have food.\n;
+printc "you do not have food.\n";
 jump after_action;
 
 label feed_have;
 sub num food 1;
-printc you feed jeremy.\n;
+printc "you feed jeremy.\n";
 
 copy jeremy_hunger tmpb;
 ste num tmpb 30;
@@ -501,26 +499,26 @@ jumpv feed_ok tmpb;
 add num jeremy_hunger 10;
 sub num jeremy_health 3;
 sub num jeremy_happy 3;
-printc jeremy is full already...\n;
+printc "jeremy is full already...\n";
 jump feed_check_over;
 
 label feed_ok;
 add num jeremy_hunger 10;
 add num jeremy_happy 5;
-printc jeremy is happier now that he has been fed.\n;
+printc "jeremy is happier now that he has been fed.\n";
 jump feed_check_over;
 
 label feed_starving;
 add num jeremy_hunger 20;
 add num jeremy_health 10;
 add num jeremy_happy 15;
-printc jeremy is very happy you saved him from starvation.\n;
+printc "jeremy is very happy you saved him from starvation.\n";
 
 label feed_check_over;
 copy jeremy_hunger tmpb;
 gte num tmpb 150;
 jumpnv feed_done tmpb;
-printc you overfed jeremy. he burst like a balloon.\n;
+printc "you overfed jeremy. he burst like a balloon.\n";
 set num jeremy_health 0;
 label feed_done;
 add num minute 10;
@@ -530,7 +528,7 @@ label act_not_feed;
 copy action tmpa;
 eqc num tmpa 3;
 jumpnv act_not_pet tmpa;
-printc you pet jeremy. he is content.\n;
+printc "you pet jeremy. he is content.\n";
 add num jeremy_happy 5;
 add num minute 3;
 jump after_action;
@@ -543,7 +541,7 @@ jumpnv act_not_play tmpa;
 copy jeremy_stamina tmpb;
 st num tmpb 30;
 jumpnv play_ok tmpb;
-printc jeremy is too tired to play. maybe let him rest.\n;
+printc "jeremy is too tired to play. maybe let him rest.\n";
 jump after_action;
 
 label play_ok;
@@ -552,7 +550,7 @@ sub num jeremy_stamina 20;
 add num jeremy_happy 10;
 sub num jeremy_hunger 5;
 set num played 1;
-printc jeremy had a good time playing.\n;
+printc "jeremy had a good time playing.\n";
 add num hour 1;
 jump after_action;
 label act_not_play;
@@ -560,7 +558,7 @@ label act_not_play;
 copy action tmpa;
 eqc num tmpa 5;
 jumpnv act_not_rest tmpa;
-printc jeremy rests for a good while.\n;
+printc "jeremy rests for a good while.\n";
 add num jeremy_stamina 40;
 add num hour 8;
 add num minute 15;
@@ -570,12 +568,12 @@ label act_not_rest;
 copy action tmpa;
 eqc num tmpa 6;
 jumpnv act_not_vet tmpa;
-printc vet visit costs 15 pounds (+5 if treatment needed).\n;
+printc "vet visit costs 15 pounds (+5 if treatment needed).\n";
 
 copy money tmpb;
 st num tmpb 15;
 jumpnv vet_can_pay tmpb;
-printc you do not have the cash.\n;
+printc "you do not have the cash.\n";
 add num minute 13;
 jump after_action;
 
@@ -583,9 +581,9 @@ label vet_can_pay;
 sub num money 15;
 add num hour 1;
 add num minute 30;
-printc jeremy is at ;
+printc "jeremy is at ";
 print jeremy_health;
-printc  health.\n;
+printc " health.\n";
 
 copy is_ill tmpb;
 eqc num tmpb 1;
@@ -594,18 +592,18 @@ jumpnv vet_no_treat tmpb;
 copy money tmpc;
 st num tmpc 5;
 jumpnv vet_treat_ok tmpc;
-printc treatment needed but you cannot afford the extra 5.\n;
+printc "treatment needed but you cannot afford the extra 5.\n";
 jump after_action;
 
 label vet_treat_ok;
 sub num money 5;
 add num jeremy_health 15;
 set num is_ill 0;
-printc jeremy was sick, but was cured.\n;
+printc "jeremy was sick, but was cured.\n";
 jump after_action;
 
 label vet_no_treat;
-printc jeremy seems fine.\n;
+printc "jeremy seems fine.\n";
 jump after_action;
 label act_not_vet;
 
@@ -616,15 +614,15 @@ jumpnv act_not_buyfood tmpa;
 copy money tmpb;
 st num tmpb 10;
 jumpnv buy_ok tmpb;
-printc you do not have the money.\n;
+printc "you do not have the money.\n";
 jump after_action;
 
 label buy_ok;
 sub num money 10;
 add num food 1;
-printc you buy food. you now have ;
+printc "you buy food. you now have ";
 print food;
-printc  food.\n;
+printc " food.\n";
 add num minute 20;
 jump after_action;
 label act_not_buyfood;
@@ -636,7 +634,7 @@ jumpnv act_not_work tmpa;
 copy fired tmpb;
 eqc num tmpb 1;
 jumpnv work_has_job tmpb;
-printc not like you have employment.\n;
+printc "not like you have employment.\n";
 jump after_action;
 
 label work_has_job;
@@ -667,7 +665,7 @@ copy hour tmpb;
 st num tmpb 10;
 jumpnv work_late tmpb;
 
-printc you work until 17 and return to jeremy.\n;
+printc "you work until 17 and return to jeremy.\n";
 set num hour 17;
 set num minute 15;
 set num worked 1;
@@ -675,7 +673,7 @@ add num money 20;
 jump after_action;
 
 label work_late;
-printc you arrive late and get scolded.\n;
+printc "you arrive late and get scolded.\n";
 add num reprimands 1;
 set num hour 17;
 set num minute 15;
@@ -684,13 +682,13 @@ add num money 15;
 jump after_action;
 
 label work_fired;
-printc oops. you got fired.\n;
+printc "oops. you got fired.\n";
 set num fired 1;
 add num minute 30;
 jump after_action;
 
 label work_closed;
-printc the office is closed.\n;
+printc "the office is closed.\n";
 jump after_action;
 
 label act_not_work;
@@ -699,14 +697,14 @@ copy action tmpa;
 eqc num tmpa 9;
 jumpnv act_not_save tmpa;
 call save_game;
-printc game saved.\n;
+printc "game saved.\n";
 jump after_action;
 label act_not_save;
 
 copy action tmpa;
 eqc num tmpa 10;
 jumpnv act_not_wait tmpa;
-printc for how long? (hours 1 to 24)\n;
+printc "for how long? (hours 1 to 24)\n";
 set in input;
 conv input num;
 copy input tmpb;
@@ -718,21 +716,21 @@ jumpv wait_bad tmpb;
 add num hour input;
 jump after_action;
 label wait_bad;
-printc invalid wait.\n;
+printc "invalid wait.\n";
 jump after_action;
 label act_not_wait;
 
 copy action tmpa;
 eqc num tmpa 12;
 jumpnv act_not_skin tmpa;
-printc you skinned jeremy.\nall hail the flesh rodent.\n;
+printc "you skinned jeremy.\nall hail the flesh rodent.\n";
 set num jeremy_mood 7;
 set num jeremy_happy 0;
 set num jeremy_stamina 0;
 jump after_action;
 label act_not_skin;
 
-printc invalid action.\n;
+printc "invalid action.\n";
 
 label after_action;
 
@@ -752,7 +750,7 @@ call clamp_stats;
 jump main_loop;
 
 label flesh_mode;
-printc all hail the flesh rodent.\n;
+printc "all hail the flesh rodent.\n";
 sub num jeremy_health 5;
 add num minute 1;
 call tick_time;
